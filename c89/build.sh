@@ -1,3 +1,3 @@
 #!/bin/sh
 
-gcc -Os -o pathway pathway.c
+gcc -std=c89 -Os -o pathway pathway.c

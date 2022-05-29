@@ -16,24 +16,7 @@ void print_usage(const char *command)
 #define LEN ('L')
 #define GET ('G')
 
-char subcommand_to_code(const char *argv_elem) {
-  if (strcmp(argv_elem, "insert") == 0) {
-    return INSERT;
-  }
-  if (strcmp(argv_elem, "delete") == 0) {
-    return DELETE;
-  }
-  if (strcmp(argv_elem, "count") == 0) {
-    return COUNT;
-  }
-  if (strcmp(argv_elem, "len") == 0) {
-    return LEN;
-  }
-  if (strcmp(argv_elem, "get") == 0) {
-    return GET;
-  }
-  else { return UNKNOWN; }
-}
+
 
 #define IS_DECIMAL(c) (c >= '0' && c <= '9')
 int is_decimal(const char *str) {
@@ -431,42 +414,42 @@ int main(int argc, char **argv)
         if (*argv[i] == '-')
         {
             if (strcmp(argv[i],"--help")) {
-                print_usage(command);
-                exit(1);
+                goto usage;
             }
             /* !Other subcommand options go here. */
             else {
-                print_usage(command);
-                exit(1);
+                goto usage;
             }
             continue;
         }
-        else if (subcommand_code == 0 && *argv[i] != '-') {
+        else if (subcommand == NULL && *argv[i] != '-') {
             subcommand = argv[i];
-            subcommand_code = subcommand_to_code(subcommand);
             ++i;
             break;
         }
     }
 
-    switch (subcommand_code) {
-        case INSERT:
+    if (subcommand != NULL) {
+        if (strcmp(subcommand, "insert") == 0) {
             process_insert_argv(command, envpath, envpath_len, argc - i, argv + i);
-            break;
-        case DELETE:
+        }
+        if (strcmp(subcommand, "delete") == 0) {
             process_delete_argv(command, envpath, envpath_len, argc - i, argv + i);
-            break;
-        case COUNT:
+        }
+        if (strcmp(subcommand, "count") == 0) {
             process_count_argv(command, envpath, envpath_len, argc - i, argv + i);
-            break;
-        case LEN:
+        }
+        if (strcmp(subcommand, "len") == 0) {
             process_len_argv(command, envpath, envpath_len, argc - i, argv + i);
-            break;
-        case GET:
+        }
+        if (strcmp(subcommand, "get") == 0) {
             process_get_argv(command, envpath, envpath_len, argc - i, argv + i);
-            break;
+        }
     }
 
+    // TODO: Consider path output options?
+
+usage:
     print_usage(command);
     return 1;
 }
