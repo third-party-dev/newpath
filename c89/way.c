@@ -4,19 +4,179 @@
 #include <errno.h>
 #include <limits.h>
 
+size_t count_elems(const char *path, const size_t path_len) {
+  size_t count = 0;
+  int i;
+  
+  for (i = 0; i < path_len; ++i) {
+    if (path[i] == ':') {
+      count += 1;
+    }
+  }
+  
+  return count + 1;
+}
+
+#define STR_EQ(a, b) (strcmp(a, b) == 0)
+
+void _insert_elem(
+    int mode,
+    char *dst,
+    size_t *dst_len,
+    char *path, 
+    size_t path_len, 
+    int idx, 
+    char *npath, 
+    size_t npath_len) {
+
+    size_t count = 0;
+    size_t dst_idx = 0;
+    int i;
+    
+    if (idx == 0) {
+        if (mode == 1) {
+            if (dst) {
+                memcpy(&dst[dst_idx], npath, npath_len);
+                dst_idx += npath_len;
+            }
+            if (dst_len) *dst_len += npath_len;
+            if (path_len > 0) dst[dst_idx++] = ':';
+        }
+        if (mode == 2) {
+            printf("%s", npath);
+            if (path_len > 0) putchar(':');
+        }
+    }
+
+    /* Get the count. */
+    for (i = 0; i < path_len; ++i) {
+        if (mode == 1) {
+            if (dst) dst[dst_idx++] = path[i];
+            if (dst_len) *dst_len = dst_idx;
+        }
+        if (mode == 2) {
+            putchar(path[i]);
+        }
+        if (path[i] == ':') {
+            ++count;
+            if (count == idx) {
+                if (mode == 1) {
+                    if (dst) {
+                        memcpy(&dst[dst_idx], npath, npath_len);
+                        dst_idx += npath_len;
+                    }
+                    if (dst_len) *dst_len += npath_len;
+                    if (path_len - i > 0) dst[dst_idx++] = ':';
+                }
+                if (mode == 2) {
+                    printf("%s", npath);
+                    if (path_len - i > 0) putchar(':');
+                }
+            }
+        }
+    }
+
+    if (count + 1 == idx) {
+        if (mode == 1) {
+            if (path_len > 0) dst[dst_idx++] = ':';
+            if (dst) {
+                memcpy(&dst[dst_idx], npath, npath_len);
+                dst_idx += npath_len;
+            }
+            if (dst_len) *dst_len += npath_len;
+        }
+        if (mode == 2) {
+            if (path_len > 0) putchar(':');
+            printf("%s", npath);
+        }
+    }
+}
+
+void way_insert_set(char *dst, size_t *dst_len, char *path, size_t path_len, int idx, char *npath, size_t npath_len) {
+    _insert_elem(1, dst, dst_len, path, path_len, idx, npath, npath_len);
+}
+
+void way_insert_print(char *path, size_t path_len, int idx, char *npath) {
+    _insert_elem(2, NULL, NULL, path, path_len, idx, npath, strlen(npath));
+}
+
+void _delete_elem(
+    int mode, 
+    char *dst, 
+    size_t *dst_len, 
+    char *path, 
+    size_t path_len, 
+    int idx) {
+
+    size_t count = 0;
+    int i;
+    size_t dst_idx = 0;
+
+    for (i = 0; i < path_len; ++i) {
+        if (path[i] == ':') {
+            ++count;
+            if (idx == 0 && count == 1) continue;
+            if (idx == count) continue;
+        }
+        if (idx != count) {
+            if (mode == 1) {
+                if (dst) dst[dst_idx++] = path[i];
+                if (dst_len) *dst_len++;
+            }
+            if (mode == 2) putchar(path[i]);
+        }
+    }
+}
+
+void way_delete_set(char *dst, size_t *dst_len, char *path, size_t path_len, int idx) {
+    _delete_elem(1, dst, dst_len, path, path_len, idx);
+}
+
+void way_delete_print(char *path, size_t path_len, int idx) {
+    _delete_elem(2, NULL, NULL, path, path_len, idx);
+}
+
+void _get_elem(
+    int mode, 
+    char *dst, 
+    size_t *dst_len, 
+    char *path, 
+    size_t path_len, 
+    int idx) {
+
+    size_t count = 0;
+    int i;
+    size_t dst_idx = 0;
+
+    for (i = 0; i < path_len; ++i) {
+        if (path[i] == ':') ++count;
+        if (path[i] == ':' && idx == count) continue;
+        if (idx == count) {
+            if (mode == 1) {
+                if (dst) dst[dst_idx++] = path[i];
+                if (dst_len) *dst_len++;
+            }
+            if (mode == 2) {
+                putchar(path[i]);
+            }
+        }
+    }
+}
+
+void way_get_set(char *dst, size_t *dst_len, char *path, size_t path_len, int idx) {
+    _get_elem(1, dst, dst_len, path, path_len, idx);
+}
+
+void way_get_print(char *path, size_t path_len, int idx) {
+    _get_elem(2, NULL, NULL, path, path_len, idx);
+}
+
+/* ================= CLI Handling =================== */
+
 void print_usage(const char *command)
 {
     printf("Usage: %s [options] <subcommand> [options] <args>\n", command);
 }
-
-#define UNKNOWN ('U')
-#define INSERT ('I')
-#define DELETE ('D')
-#define COUNT ('C')
-#define LEN ('L')
-#define GET ('G')
-
-
 
 #define IS_DECIMAL(c) (c >= '0' && c <= '9')
 int is_decimal(const char *str) {
@@ -61,39 +221,13 @@ void insert_usage(char *command)
     printf("Usage: %s [options] insert [options] <args>\n", command);
 }
 
-#define STR_EQ(a, b) (strcmp(a, b) == 0)
-
-void insert_elem(char *path, size_t path_len, int idx, char *npath) {
-    size_t count = 0;
-    int i;
-    
-    if (idx == 0) {
-        printf("%s", npath);
-        if (path_len > 0) printf(":");
-    }
-
-    /* Get the count. */
-    for (i = 0; i < path_len; ++i) {
-        printf("%c", path[i]);
-        if (path[i] == ':') {
-            ++count;
-            if (count == idx) {
-                printf("%s", npath);
-                if (path_len - i > 0) printf(":");
-            }
-        }
-    }
-
-    if (count + 1 == idx) {
-        if (path_len > 0) printf(":");
-        printf("%s", npath);
-    }
-}
-
 void process_insert_argv(char *command, char *path, size_t path_len, int argc, char **argv)
 {
     int idx = 0;
     char *tgtpath = NULL;
+
+    int index_used = 0;
+    int tail_used = 0;
 
     int i;
     for (i = 0; i < argc; ++i) {
@@ -106,7 +240,8 @@ void process_insert_argv(char *command, char *path, size_t path_len, int argc, c
             if (strcmp(argv[i],"--help") == 0) {
                 goto usage;
             }
-            else if (STR_EQ(argv[i], "--index") || STR_EQ(argv[i], "-i")) {  
+            else if (STR_EQ(argv[i], "--index") || STR_EQ(argv[i], "-i") && !tail_used) {  
+                index_used = 1;
                 if (i + 1 < argc) {
                     ++i;
                     if (is_decimal(argv[i]) || is_hex(argv[i]) || is_octal(argv[i])) {
@@ -118,6 +253,10 @@ void process_insert_argv(char *command, char *path, size_t path_len, int argc, c
                         goto usage;
                     }
                 }
+            }
+            else if (STR_EQ(argv[i], "--tail") || STR_EQ(argv[i], "-t") && !index_used) {
+                tail_used = 1;
+                idx = count_elems(path, path_len);
             }
             /* !Other subcommand options go here. */
             else {
@@ -131,7 +270,7 @@ void process_insert_argv(char *command, char *path, size_t path_len, int argc, c
     /* Process subcommand arguments */
     if (argc - i == 1) {
         tgtpath = argv[i];
-        insert_elem(path, path_len, idx, tgtpath);
+        way_insert_print(path, path_len, idx, tgtpath);
         exit(0);
     }
 
@@ -145,20 +284,12 @@ void delete_usage(char *command)
     printf("Usage: %s [options] delete [options] <args>\n", command);
 }
 
-void delete_elem(char *path, size_t path_len, int idx) {
-    size_t count = 0;
-    int i;
-
-    for (i = 0; i < path_len; ++i) {
-        if (path[i] == ':') ++count;
-        if (path[i] == ':' && idx == count) continue;
-        if (idx != count) printf("%c", path[i]);
-    }
-}
-
 void process_delete_argv(char *command, char *path, size_t path_len, int argc, char **argv)
 {
     int idx = 0;
+
+    int index_used = 0;
+    int tail_used = 0;
 
     int i;
     for (i = 0; i < argc; ++i) {
@@ -171,7 +302,8 @@ void process_delete_argv(char *command, char *path, size_t path_len, int argc, c
             if (strcmp(argv[i],"--help") == 0) {
                 goto usage;
             }
-            else if (STR_EQ(argv[i], "--index") || STR_EQ(argv[i], "-i")) {  
+            else if (STR_EQ(argv[i], "--index") || STR_EQ(argv[i], "-i") && !tail_used) {
+                index_used = 1;  
                 if (i + 1 < argc) {
                     ++i;
                     /* TODO: Need _better_ error check */
@@ -184,6 +316,10 @@ void process_delete_argv(char *command, char *path, size_t path_len, int argc, c
                         goto usage;
                     }
                 }
+            }
+            else if (STR_EQ(argv[i], "--tail") || STR_EQ(argv[i], "-t") && !index_used) {
+                tail_used = 1;
+                idx = count_elems(path, path_len) - 1;
             }
             /* !Other subcommand options go here. */
             else {
@@ -198,7 +334,7 @@ void process_delete_argv(char *command, char *path, size_t path_len, int argc, c
         goto usage;
     }
 
-    delete_elem(path, path_len, idx);
+    way_delete_print(path, path_len, idx);
     exit(0);
 
 usage:
@@ -209,19 +345,6 @@ usage:
 void count_usage(const char *command)
 {
     printf("Usage: %s [options] count [options] <args>\n", command);
-}
-
-size_t count_elems(const char *path, const size_t path_len) {
-  size_t count = 0;
-  int i;
-  
-  for (i = 0; i < path_len; ++i) {
-    if (path[i] == ':') {
-      count += 1;
-    }
-  }
-  
-  return count + 1;
 }
 
 void process_count_argv(
@@ -308,17 +431,6 @@ void get_usage(char *command)
     printf("Usage: %s [options] get [options] <args>\n", command);
 }
 
-void get_elem(char *path, size_t path_len, int idx) {
-    size_t count = 0;
-    int i;
-
-    for (i = 0; i < path_len; ++i) {
-        if (path[i] == ':') ++count;
-        if (path[i] == ':' && idx == count) continue;
-        if (idx == count) printf("%c", path[i]);
-    }
-}
-
 void process_get_argv(char *command, char *path, size_t path_len, int argc, char **argv)
 {
     int idx = 0;
@@ -326,6 +438,8 @@ void process_get_argv(char *command, char *path, size_t path_len, int argc, char
     size_t sub_len;
     char *res;
     int i;
+    int tail_used = 0;
+    int index_used = 0;
 
     if (path == NULL || path_len == 0) {
         exit(0);
@@ -341,7 +455,8 @@ void process_get_argv(char *command, char *path, size_t path_len, int argc, char
             if (strcmp(argv[i],"--help") == 0) {
                 goto usage;
             }
-            else if (STR_EQ(argv[i], "--index") || STR_EQ(argv[i], "-i")) {  
+            else if (STR_EQ(argv[i], "--index") || STR_EQ(argv[i], "-i") && !tail_used) {  
+                index_used = 1;
                 if (i + 1 < argc) {
                     ++i;
                     if (is_decimal(argv[i]) || is_hex(argv[i]) || is_octal(argv[i])) {
@@ -353,6 +468,10 @@ void process_get_argv(char *command, char *path, size_t path_len, int argc, char
                         goto usage;
                     }
                 }
+            }
+            else if (STR_EQ(argv[i], "--tail") || STR_EQ(argv[i], "-t") && !index_used) { 
+                tail_used = 1; 
+                idx = count_elems(path, path_len) - 1;
             }
             /* !Other subcommand options go here. */
             else {
@@ -368,7 +487,7 @@ void process_get_argv(char *command, char *path, size_t path_len, int argc, char
     }
 
     /* Process subcommand arguments */
-    get_elem(path, path_len, idx);
+    way_get_print(path, path_len, idx);
     exit(0);
 
 usage:
@@ -381,14 +500,10 @@ int main(int argc, char **argv)
     int i;
     
     int have_subcommand = 0;
-    char *subcommand;
-    char subcommand_code = 0;
+    char *subcommand = NULL;
 
-    char *envpath;
-    size_t envpath_len;
-
-    envpath = getenv("PATH");
-    envpath_len = strlen(envpath);
+    char *envpath = getenv("PATH");
+    size_t envpath_len = strlen(envpath);
 
     /*
       Usage: <command> [options] <sub command> [options] <args>
@@ -413,7 +528,7 @@ int main(int argc, char **argv)
     for (i = 1; i < argc; ++i) {
         if (*argv[i] == '-')
         {
-            if (strcmp(argv[i],"--help")) {
+            if (STR_EQ(argv[i], "--help")) {
                 goto usage;
             }
             /* !Other subcommand options go here. */
@@ -430,24 +545,24 @@ int main(int argc, char **argv)
     }
 
     if (subcommand != NULL) {
-        if (strcmp(subcommand, "insert") == 0) {
+        if (STR_EQ(subcommand, "insert")) {
             process_insert_argv(command, envpath, envpath_len, argc - i, argv + i);
         }
-        if (strcmp(subcommand, "delete") == 0) {
+        if (STR_EQ(subcommand, "delete")) {
             process_delete_argv(command, envpath, envpath_len, argc - i, argv + i);
         }
-        if (strcmp(subcommand, "count") == 0) {
+        if (STR_EQ(subcommand, "count")) {
             process_count_argv(command, envpath, envpath_len, argc - i, argv + i);
         }
-        if (strcmp(subcommand, "len") == 0) {
+        if (STR_EQ(subcommand, "len")) {
             process_len_argv(command, envpath, envpath_len, argc - i, argv + i);
         }
-        if (strcmp(subcommand, "get") == 0) {
+        if (STR_EQ(subcommand, "get")) {
             process_get_argv(command, envpath, envpath_len, argc - i, argv + i);
         }
     }
 
-    // TODO: Consider path output options?
+    /* TODO: Consider path output options? */
 
 usage:
     print_usage(command);
