@@ -9,12 +9,6 @@ void print_usage(const char *command)
     printf("Usage: %s [options] <subcommand> [options] <args>\n", command);
 }
 
-// insert
-// delete
-// count
-// len
-// get
-
 #define UNKNOWN ('U')
 #define INSERT ('I')
 #define DELETE ('D')
@@ -95,7 +89,7 @@ void insert_elem(char *path, size_t path_len, int idx, char *npath) {
         if (path_len > 0) printf(":");
     }
 
-    // Get the count.
+    /* Get the count. */
     for (i = 0; i < path_len; ++i) {
         printf("%c", path[i]);
         if (path[i] == ':') {
@@ -132,7 +126,6 @@ void process_insert_argv(char *command, char *path, size_t path_len, int argc, c
             else if (STR_EQ(argv[i], "--index") || STR_EQ(argv[i], "-i")) {  
                 if (i + 1 < argc) {
                     ++i;
-                    // TODO: Need _better_ error check
                     if (is_decimal(argv[i]) || is_hex(argv[i]) || is_octal(argv[i])) {
                         idx = strtol(argv[i], NULL, 0);
                         if (idx == LONG_MIN || idx == LONG_MAX || errno == ERANGE) {
@@ -143,7 +136,7 @@ void process_insert_argv(char *command, char *path, size_t path_len, int argc, c
                     }
                 }
             }
-            // !Other subcommand options go here.
+            /* !Other subcommand options go here. */
             else {
                 goto usage;
             }
@@ -152,10 +145,9 @@ void process_insert_argv(char *command, char *path, size_t path_len, int argc, c
         break;
     }
 
-    // Process subcommand arguments
+    /* Process subcommand arguments */
     if (argc - i == 1) {
         tgtpath = argv[i];
-        //printf("Insert %s at %d\n", tgtpath, idx);
         insert_elem(path, path_len, idx, tgtpath);
         exit(0);
     }
@@ -199,7 +191,7 @@ void process_delete_argv(char *command, char *path, size_t path_len, int argc, c
             else if (STR_EQ(argv[i], "--index") || STR_EQ(argv[i], "-i")) {  
                 if (i + 1 < argc) {
                     ++i;
-                    // TODO: Need _better_ error check
+                    /* TODO: Need _better_ error check */
                     if (is_decimal(argv[i]) || is_hex(argv[i]) || is_octal(argv[i])) {
                         idx = strtol(argv[i], NULL, 0);
                         if (idx == LONG_MIN || idx == LONG_MAX || errno == ERANGE) {
@@ -210,7 +202,7 @@ void process_delete_argv(char *command, char *path, size_t path_len, int argc, c
                     }
                 }
             }
-            // !Other subcommand options go here.
+            /* !Other subcommand options go here. */
             else {
                 goto usage;
             }
@@ -263,7 +255,7 @@ void process_count_argv(
             if (strcmp(argv[i],"--help")) {
                 goto usage;
             }
-            // !Other subcommand options go here.
+            /* !Other subcommand options go here. */
             else {
                 goto usage;
             }
@@ -307,7 +299,7 @@ void process_len_argv(
             if (strcmp(argv[i],"--help")) {
                 goto usage;
             }
-            // !Other subcommand options go here.
+            /* !Other subcommand options go here. */
             else {
                 goto usage;
             }
@@ -379,7 +371,7 @@ void process_get_argv(char *command, char *path, size_t path_len, int argc, char
                     }
                 }
             }
-            // !Other subcommand options go here.
+            /* !Other subcommand options go here. */
             else {
                 goto usage;
             }
@@ -392,7 +384,7 @@ void process_get_argv(char *command, char *path, size_t path_len, int argc, char
         goto usage;
     }
 
-    // Process subcommand arguments
+    /* Process subcommand arguments */
     get_elem(path, path_len, idx);
     exit(0);
 
@@ -415,18 +407,20 @@ int main(int argc, char **argv)
     envpath = getenv("PATH");
     envpath_len = strlen(envpath);
 
-    // Usage: <command> [options] <sub command> [options] <args>
-    // States:
-    //   - Command
-    //   - Command Options
-    //   - Subcommand
-    //   - Subcommand Options
-    //   - Subcommand Arguments
+    /*
+      Usage: <command> [options] <sub command> [options] <args>
+      States:
+       - Command
+       - Command Options
+       - Subcommand
+       - Subcommand Options
+       - Subcommand Arguments
+    */
 
-    // 1. Get command
+    /* 1. Get command */
     char *command = argv[0];
 
-    // 2. Process options until sub_command
+    /* 2. Process options until sub_command */
     if (argc == 1)
     {
         printf("%s", envpath);
@@ -440,7 +434,7 @@ int main(int argc, char **argv)
                 print_usage(command);
                 exit(1);
             }
-            // !Other subcommand options go here.
+            /* !Other subcommand options go here. */
             else {
                 print_usage(command);
                 exit(1);
