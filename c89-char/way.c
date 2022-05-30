@@ -6,13 +6,15 @@ size_t way_count_elems(const char *path, const size_t path_len) {
   size_t count = 0;
   int i;
   
+  if (path_len == 0) return 0;
+
   for (i = 0; i < path_len; ++i) {
     if (path[i] == ':') {
       count += 1;
     }
   }
-  
-  return count + 1;
+
+  return count > 0 ? count + 1 : 1;
 }
 
 static void _insert_elem(

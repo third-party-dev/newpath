@@ -8,9 +8,14 @@
 
 #define STR_EQ(s1, s2) (strcmp(s1, s2) == 0)
 
+static void print_path(const char *path, const size_t path_len) {
+    size_t i;
+    for (i = 0; i < path_len; ++i) putchar(path[i]);
+}
+
 static void print_usage(const char *command)
 {
-    printf("Usage: %s [options] <subcommand> [options] <args>\n", command);
+    fprintf(stderr, "Usage: %s [options] <subcommand> [options] <args>\n", command);
 }
 
 #define IS_DECIMAL(c) (c >= '0' && c <= '9')
@@ -53,7 +58,7 @@ static int is_octal(const char *str) {
 
 static void insert_usage(char *command)
 {
-    printf("Usage: %s [options] insert [options] <args>\n", command);
+    fprintf(stderr, "Usage: %s [options] insert [options] <args>\n", command);
 }
 
 static void process_insert_argv(char *command, char *path, size_t path_len, int argc, char **argv)
@@ -110,13 +115,15 @@ static void process_insert_argv(char *command, char *path, size_t path_len, int 
     }
 
 usage:
+    /* Dump path even during errors to prevent an error from busting PATH */
+    print_path(path, path_len);
     insert_usage(command);
     exit(1);
 }
 
 static void delete_usage(char *command)
 {
-    printf("Usage: %s [options] delete [options] <args>\n", command);
+    fprintf(stderr, "Usage: %s [options] delete [options] <args>\n", command);
 }
 
 static void process_delete_argv(char *command, char *path, size_t path_len, int argc, char **argv)
@@ -173,13 +180,15 @@ static void process_delete_argv(char *command, char *path, size_t path_len, int 
     exit(0);
 
 usage:
+    /* Dump path even during errors to prevent an error from busting PATH */
+    print_path(path, path_len);
     delete_usage(command);
     exit(1);
 }
 
 static void count_usage(const char *command)
 {
-    printf("Usage: %s [options] count [options] <args>\n", command);
+    fprintf(stderr, "Usage: %s [options] count [options] <args>\n", command);
 }
 
 static void process_count_argv(
@@ -219,7 +228,7 @@ usage:
 
 static void len_usage(const char *command)
 {
-    printf("Usage: %s [options] len [options] <args>\n", command);
+    fprintf(stderr, "Usage: %s [options] len [options] <args>\n", command);
 }
 
 static void process_len_argv(
@@ -263,7 +272,7 @@ usage:
 
 static void get_usage(char *command)
 {
-    printf("Usage: %s [options] get [options] <args>\n", command);
+    fprintf(stderr, "Usage: %s [options] get [options] <args>\n", command);
 }
 
 static void process_get_argv(char *command, char *path, size_t path_len, int argc, char **argv)
@@ -400,6 +409,7 @@ int main(int argc, char **argv)
     /* TODO: Consider path output options? */
 
 usage:
+    print_path(envpath, envpath_len);
     print_usage(command);
     return 1;
 }
