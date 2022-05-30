@@ -2,6 +2,29 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* Note: This includes non-visible variation selectors. */
+static size_t strlen_mb(const char* path, const size_t path_len)
+{
+    size_t result = 0;
+    char *ptr = (char *)path;
+    const char* end = ptr + path_len;
+    mblen(NULL, 0); /* reset the conversion state */
+    while(ptr < end) {
+        int next = mblen(ptr, end - ptr);
+        if(next == -1) {
+           return (size_t)-1;
+           break;
+        }
+        ptr += next;
+        ++result;
+    }
+    return result;
+}
+
+size_t way_count_chars(const char *path, const size_t path_len) {
+    return strlen_mb(path, path_len);
+}
+
 size_t way_count_elems(const char *path, const size_t path_len) {
   size_t count = 0;
   int i;
@@ -31,6 +54,17 @@ static void _insert_elem(
     size_t dst_idx = 0;
     int i;
     
+    /* //! Not sure if making noise about multi-inserts is correct. */
+    /*
+    size_t elem_count = 0;
+    elem_count = way_count_elems(npath, npath_len);
+    if (elem_count > 1) {
+        #define MULTI_INSERT_WARNING \
+          "WARNING: Inserting %u items. ':' not allowed in PATH.\n"
+        fprintf(stderr, MULTI_INSERT_WARNING, (unsigned int)elem_count);
+    }
+    */
+
     if (idx == 0) {
         if (mode == 1) {
             if (dst) {

@@ -3,6 +3,7 @@
 #include <string.h>
 #include <errno.h>
 #include <limits.h>
+#include <locale.h>
 
 #include "way.h"
 
@@ -196,11 +197,7 @@ static void process_count_argv(
 {
     int i;
     for (i = 0; i < argc; ++i) {
-        if (strcmp(argv[i], "--") == 0) {
-            ++i;
-            break;
-        }
-        else if (*argv[i] == '-')
+        if (*argv[i] == '-')
         {
             if (strcmp(argv[i],"--help")) {
                 goto usage;
@@ -226,12 +223,12 @@ usage:
     exit(1);
 }
 
-static void len_usage(const char *command)
+static void bytes_usage(const char *command)
 {
-    fprintf(stderr, "Usage: %s [options] len [options] <args>\n", command);
+    fprintf(stderr, "Usage: %s [options] bytes [options] <args>\n", command);
 }
 
-static void process_len_argv(
+static void process_bytes_argv(
     const char *command, 
     const char *path, 
     const size_t path_len, 
@@ -240,11 +237,7 @@ static void process_len_argv(
 {
     int i;
     for (i = 0; i < argc; ++i) {
-        if (strcmp(argv[i], "--") == 0) {
-            ++i;
-            break;
-        }
-        else if (*argv[i] == '-')
+        if (*argv[i] == '-')
         {
             if (strcmp(argv[i],"--help")) {
                 goto usage;
@@ -266,7 +259,47 @@ static void process_len_argv(
     exit(0);
 
 usage:
-    len_usage(command);
+    bytes_usage(command);
+    exit(1);
+}
+
+static void chars_usage(const char *command)
+{
+    fprintf(stderr, "Usage: %s [options] chars [options] <args>\n", command);
+}
+
+static void process_chars_argv(
+    const char *command, 
+    const char *path, 
+    const size_t path_len, 
+    int argc, 
+    char **argv)
+{
+    int i;
+    for (i = 0; i < argc; ++i) {
+        if (*argv[i] == '-')
+        {
+            if (strcmp(argv[i],"--help")) {
+                goto usage;
+            }
+            /* !Other subcommand options go here. */
+            else {
+                goto usage;
+            }
+            continue;
+        }
+        break;
+    }
+
+    if (argc - i > 0) {
+        goto usage;
+    }
+
+    printf("%u", (unsigned int)way_count_chars(path, path_len));
+    exit(0);
+
+usage:
+    chars_usage(command);
     exit(1);
 }
 
@@ -362,6 +395,8 @@ int main(int argc, char **argv)
     /* 1. Get command */
     char *command = argv[0];
 
+    setlocale(LC_ALL, "");
+
     /* 2. Process options until sub_command */
     if (argc == 1)
     {
@@ -398,8 +433,11 @@ int main(int argc, char **argv)
         if (STR_EQ(subcommand, "count")) {
             process_count_argv(command, envpath, envpath_len, argc - i, argv + i);
         }
-        if (STR_EQ(subcommand, "len")) {
-            process_len_argv(command, envpath, envpath_len, argc - i, argv + i);
+        if (STR_EQ(subcommand, "bytes")) {
+            process_bytes_argv(command, envpath, envpath_len, argc - i, argv + i);
+        }
+        if (STR_EQ(subcommand, "chars")) {
+            process_chars_argv(command, envpath, envpath_len, argc - i, argv + i);
         }
         if (STR_EQ(subcommand, "get")) {
             process_get_argv(command, envpath, envpath_len, argc - i, argv + i);

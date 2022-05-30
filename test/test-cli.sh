@@ -1,9 +1,12 @@
 #!/bin/bash
 
+# TODO: Add tests for adding paths with ':'
+
 : ${PREFIX=c89-char}
 
 export PATH=
-[ "`${PREFIX}/way len`" == "0" ] || echo "FAILURE"
+[ "`${PREFIX}/way bytes`" == "0" ] || echo "FAILURE"
+[ "`${PREFIX}/way chars`" == "0" ] || echo "FAILURE"
 [ "`${PREFIX}/way count`" == "0" ] || echo "FAILURE"
 
 [ "`${PREFIX}/way get`" == "" ] || echo "FAILURE"
@@ -33,7 +36,8 @@ export PATH=
 [ "`${PREFIX}/way insert --tail /mine`" == "/mine" ] || echo "FAILURE"
 
 export PATH=/one
-[ "`${PREFIX}/way len`" == "4" ] || echo "FAILURE"
+[ "`${PREFIX}/way bytes`" == "4" ] || echo "FAILURE"
+[ "`${PREFIX}/way chars`" == "4" ] || echo "FAILURE"
 [ "`${PREFIX}/way count`" == "1" ] || echo "FAILURE"
 
 [ "`${PREFIX}/way get`" == "/one" ] || echo "FAILURE"
@@ -63,7 +67,8 @@ export PATH=/one
 [ "`${PREFIX}/way insert --tail /mine`" == "/one:/mine" ] || echo "FAILURE"
 
 export PATH=/one:/two
-[ "`${PREFIX}/way len`" == "9" ] || echo "FAILURE"
+[ "`${PREFIX}/way bytes`" == "9" ] || echo "FAILURE"
+[ "`${PREFIX}/way chars`" == "9" ] || echo "FAILURE"
 [ "`${PREFIX}/way count`" == "2" ] || echo "FAILURE"
 
 [ "`${PREFIX}/way get`" == "/one" ] || echo "FAILURE"
@@ -97,7 +102,8 @@ export PATH=/one:/two
 [ "`${PREFIX}/way insert --tail /mine`" == "/one:/two:/mine" ] || echo "FAILURE"
 
 export PATH=/one:
-[ "`${PREFIX}/way len`" == "5" ] || echo "FAILURE"
+[ "`${PREFIX}/way bytes`" == "5" ] || echo "FAILURE"
+[ "`${PREFIX}/way chars`" == "5" ] || echo "FAILURE"
 [ "`${PREFIX}/way count`" == "2" ] || echo "FAILURE"
 
 [ "`${PREFIX}/way get`" == "/one" ] || echo "FAILURE"
@@ -131,7 +137,8 @@ export PATH=/one:
 [ "`${PREFIX}/way insert --tail /mine`" == "/one::/mine" ] || echo "FAILURE"
 
 export PATH=:/one
-[ "`${PREFIX}/way len`" == "5" ] || echo "FAILURE"
+[ "`${PREFIX}/way bytes`" == "5" ] || echo "FAILURE"
+[ "`${PREFIX}/way chars`" == "5" ] || echo "FAILURE"
 [ "`${PREFIX}/way count`" == "2" ] || echo "FAILURE"
 
 [ "`${PREFIX}/way get`" == "" ] || echo "FAILURE"
@@ -165,7 +172,8 @@ export PATH=:/one
 [ "`${PREFIX}/way insert --tail /mine`" == ":/one:/mine" ] || echo "FAILURE"
 
 export PATH=:
-[ "`${PREFIX}/way len`" == "1" ] || echo "FAILURE"
+[ "`${PREFIX}/way bytes`" == "1" ] || echo "FAILURE"
+[ "`${PREFIX}/way chars`" == "1" ] || echo "FAILURE"
 [ "`${PREFIX}/way count`" == "2" ] || echo "FAILURE"
 
 [ "`${PREFIX}/way get`" == "" ] || echo "FAILURE"
@@ -200,8 +208,15 @@ export PATH=:
 [ "`${PREFIX}/way insert -t /mine`" == "::/mine" ] || echo "FAILURE"
 [ "`${PREFIX}/way insert --tail /mine`" == "::/mine" ] || echo "FAILURE"
 
+[ "`${PREFIX}/way insert :`" == ":::" ] || echo "FAILURE"
+[ "`${PREFIX}/way insert -i 0 :`" == ":::" ] || echo "FAILURE"
+[ "`${PREFIX}/way insert --index 0 :`" == ":::" ] || echo "FAILURE"
+[ "`${PREFIX}/way insert -t :`" == ":::" ] || echo "FAILURE"
+[ "`${PREFIX}/way insert --tail :`" == ":::" ] || echo "FAILURE"
+
 export PATH=::
-[ "`${PREFIX}/way len`" == "2" ] || echo "FAILURE"
+[ "`${PREFIX}/way bytes`" == "2" ] || echo "FAILURE"
+[ "`${PREFIX}/way chars`" == "2" ] || echo "FAILURE"
 [ "`${PREFIX}/way count`" == "3" ] || echo "FAILURE"
 
 [ "`${PREFIX}/way get`" == "" ] || echo "FAILURE"
