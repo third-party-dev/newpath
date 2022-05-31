@@ -3,7 +3,9 @@
 #include <string.h>
 
 /* Note: This includes non-visible variation selectors. */
-static size_t strlen_mb(const char* path, const size_t path_len)
+static size_t strlen_mb(
+    const char* path,
+    const size_t path_len)
 {
     size_t result = 0;
     char *ptr = (char *)path;
@@ -21,11 +23,15 @@ static size_t strlen_mb(const char* path, const size_t path_len)
     return result;
 }
 
-size_t way_count_chars(const char *path, const size_t path_len) {
+size_t way_count_chars(
+    const char *path,
+    const size_t path_len) {
     return strlen_mb(path, path_len);
 }
 
-size_t way_count_elems(const char *path, const size_t path_len) {
+size_t way_count_elems(
+    const char *path,
+    const size_t path_len) {
   size_t count = 0;
   int i;
   
@@ -55,6 +61,7 @@ static void _insert_elem(
     int i;
     
     /* //! Not sure if making noise about multi-inserts is correct. */
+    /* // TODO: If checking this, should check for premature NULL. */
     /*
     size_t elem_count = 0;
     elem_count = way_count_elems(npath, npath_len);
@@ -124,11 +131,22 @@ static void _insert_elem(
     }
 }
 
-void way_insert_set(char *dst, size_t *dst_len, char *path, size_t path_len, int idx, char *npath, size_t npath_len) {
+void way_insert_set(
+    char *dst,
+    size_t *dst_len,
+    char *path,
+    size_t path_len,
+    int idx,
+    char *npath,
+    size_t npath_len) {
     _insert_elem(1, dst, dst_len, path, path_len, idx, npath, npath_len);
 }
 
-void way_insert_print(char *path, size_t path_len, int idx, char *npath) {
+void way_insert_print(
+    char *path,
+    size_t path_len,
+    int idx,
+    char *npath) {
     _insert_elem(2, NULL, NULL, path, path_len, idx, npath, strlen(npath));
 }
 
@@ -160,11 +178,19 @@ static void _delete_elem(
     }
 }
 
-void way_delete_set(char *dst, size_t *dst_len, char *path, size_t path_len, int idx) {
+void way_delete_set(
+    char *dst,
+    size_t *dst_len,
+    char *path,
+    size_t path_len,
+    int idx) {
     _delete_elem(1, dst, dst_len, path, path_len, idx);
 }
 
-void way_delete_print(char *path, size_t path_len, int idx) {
+void way_delete_print(
+    char *path,
+    size_t path_len,
+    int idx) {
     _delete_elem(2, NULL, NULL, path, path_len, idx);
 }
 
@@ -195,11 +221,19 @@ static void _get_elem(
     }
 }
 
-void way_get_set(char *dst, size_t *dst_len, char *path, size_t path_len, int idx) {
+void way_get_set(
+    char *dst,
+    size_t *dst_len,
+    char *path,
+    size_t path_len,
+    int idx) {
     _get_elem(1, dst, dst_len, path, path_len, idx);
 }
 
-void way_get_print(char *path, size_t path_len, int idx) {
+void way_get_print(
+    char *path,
+    size_t path_len,
+    int idx) {
     _get_elem(2, NULL, NULL, path, path_len, idx);
 }
 

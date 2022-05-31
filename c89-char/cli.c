@@ -9,18 +9,40 @@
 
 #define STR_EQ(s1, s2) (strcmp(s1, s2) == 0)
 
-static void print_path(const char *path, const size_t path_len) {
+static void print_path(
+    const char *path,
+    const size_t path_len) {
     size_t i;
     for (i = 0; i < path_len; ++i) putchar(path[i]);
 }
 
-static void print_usage(const char *command)
+static void print_usage(
+    const char *command)
 {
-    fprintf(stderr, "Usage: %s [options] <subcommand> [options] <args>\n", command);
+    fprintf(stderr, 
+        "Usage: %s [options] <subcommand> [subcommand options] <args>\n"
+        "\n"
+        "Tool for manipulation of PATH environment variable."
+        "\n"
+        "Options:\n"
+        "\n"
+        "  --help - Show this usage help.\n"
+        "\n"
+        "Sub Commands:\n"
+        "\n"
+        "  bytes - Output number of bytes in PATH.\n"
+        "  chars - Output number of characters in PATH (using UTF8).\n"
+        "  get - Get the PATH element at index. (default: 0)\n"
+        "  insert - Insert the PATH element before index. (default: 0)\n"
+        "  delete - Delete the PATH element at index. (default: 0)\n"
+        "\n"
+        "Note: Use --help with sub commands for more information.\n"
+        "\n", command);
 }
 
 #define IS_DECIMAL(c) (c >= '0' && c <= '9')
-static int is_decimal(const char *str) {
+static int is_decimal(
+    const char *str) {
     int i = 0;
     for (i = 0; i < strlen(str); ++i) {
         if (!IS_DECIMAL(str[i])) return 0;
@@ -29,7 +51,8 @@ static int is_decimal(const char *str) {
 }
 
 #define IS_HEX(c) ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))
-static int is_hex(const char *str) {
+static int is_hex(
+    const char *str) {
     int i;
 
     if (strlen(str) < 3) return 0;
@@ -44,7 +67,8 @@ static int is_hex(const char *str) {
 }
 
 #define IS_OCTAL(c) (c >= '0' && c <= '7')
-static int is_octal(const char *str) {
+static int is_octal(
+    const char *str) {
     int i;
 
     if (strlen(str) < 2) return 0;
@@ -57,18 +81,42 @@ static int is_octal(const char *str) {
     return 1;
 }
 
-static void insert_usage(char *command)
+#define IS_VALID_INDEX(argv, i) \
+    (is_decimal(argv[i]) || is_hex(argv[i]) || is_octal(argv[i]))
+
+#define IS_INDEX_ARG(argv, i) \
+    (STR_EQ(argv[i], "--index") || STR_EQ(argv[i], "-i"))
+#define IS_TAIL_ARG(argv, i) \
+    (STR_EQ(argv[i], "--tail") || STR_EQ(argv[i], "-t"))
+
+
+static void insert_usage(
+    char *command)
 {
-    fprintf(stderr, "Usage: %s [options] insert [options] <args>\n", command);
+    fprintf(stderr,
+        "Usage: %s [options] insert [insert options] <args>\n"
+        "\n"
+        "Insert a path before element offset within PATH environment variable.\n"
+        "\n"
+        "Options:\n"
+        "\n"
+        "  --help - Show this usage help.\n"
+        "  --index <value>, -i <value> - Specify insertion index. (default: 0)\n"
+        "  --tail, -t - Insert the path at end of PATH.\n"
+        "\n", command);
 }
 
-static void process_insert_argv(char *command, char *path, size_t path_len, int argc, char **argv)
+static void process_insert_argv(
+    char *command,
+    char *path,
+    size_t path_len,
+    int argc,
+    char **argv)
 {
     int idx = 0;
     char *tgtpath = NULL;
 
-    int index_used = 0;
-    int tail_used = 0;
+    int index_given = 0;
 
     int i;
     for (i = 0; i < argc; ++i) {
@@ -81,11 +129,11 @@ static void process_insert_argv(char *command, char *path, size_t path_len, int 
             if (strcmp(argv[i],"--help") == 0) {
                 goto usage;
             }
-            else if (STR_EQ(argv[i], "--index") || STR_EQ(argv[i], "-i") && !tail_used) {  
-                index_used = 1;
+            else if (IS_INDEX_ARG(argv, i) && !index_given) {  
+                index_given = 1;
                 if (i + 1 < argc) {
                     ++i;
-                    if (is_decimal(argv[i]) || is_hex(argv[i]) || is_octal(argv[i])) {
+                    if (IS_VALID_INDEX(argv, i)) {
                         idx = strtol(argv[i], NULL, 0);
                         if (idx == LONG_MIN || idx == LONG_MAX || errno == ERANGE) {
                             goto usage;
@@ -95,8 +143,8 @@ static void process_insert_argv(char *command, char *path, size_t path_len, int 
                     }
                 }
             }
-            else if (STR_EQ(argv[i], "--tail") || STR_EQ(argv[i], "-t") && !index_used) {
-                tail_used = 1;
+            else if (IS_TAIL_ARG(argv, i) && !index_given) {
+                index_given = 1;
                 idx = way_count_elems(path, path_len);
             }
             /* !Other subcommand options go here. */
@@ -122,17 +170,32 @@ usage:
     exit(1);
 }
 
-static void delete_usage(char *command)
+static void delete_usage(
+    char *command)
 {
-    fprintf(stderr, "Usage: %s [options] delete [options] <args>\n", command);
+    fprintf(stderr,
+        "Usage: %s [options] delete [delete options] <args>\n"
+        "\n"
+        "Delete path at given element offset within PATH environment variable.\n"
+        "\n"
+        "Options:\n"
+        "\n"
+        "  --help - Show this usage help.\n"
+        "  --index <value>, -i <value> - Specify deletion index. (default: 0)\n"
+        "  --tail, -t - Delete the path at end of PATH.\n"
+        "\n", command);
 }
 
-static void process_delete_argv(char *command, char *path, size_t path_len, int argc, char **argv)
+static void process_delete_argv(
+    char *command,
+    char *path,
+    size_t path_len,
+    int argc,
+    char **argv)
 {
     int idx = 0;
 
-    int index_used = 0;
-    int tail_used = 0;
+    int index_given = 0;
 
     int i;
     for (i = 0; i < argc; ++i) {
@@ -145,12 +208,12 @@ static void process_delete_argv(char *command, char *path, size_t path_len, int 
             if (strcmp(argv[i],"--help") == 0) {
                 goto usage;
             }
-            else if (STR_EQ(argv[i], "--index") || STR_EQ(argv[i], "-i") && !tail_used) {
-                index_used = 1;  
+            else if (IS_INDEX_ARG(argv, i) && !index_given) {
+                index_given = 1;
                 if (i + 1 < argc) {
                     ++i;
                     /* TODO: Need _better_ error check */
-                    if (is_decimal(argv[i]) || is_hex(argv[i]) || is_octal(argv[i])) {
+                    if (IS_VALID_INDEX(argv, i)) {
                         idx = strtol(argv[i], NULL, 0);
                         if (idx == LONG_MIN || idx == LONG_MAX || errno == ERANGE) {
                             goto usage;
@@ -160,8 +223,8 @@ static void process_delete_argv(char *command, char *path, size_t path_len, int 
                     }
                 }
             }
-            else if (STR_EQ(argv[i], "--tail") || STR_EQ(argv[i], "-t") && !index_used) {
-                tail_used = 1;
+            else if (IS_TAIL_ARG(argv, i) && !index_given) {
+                index_given = 1;
                 idx = way_count_elems(path, path_len) - 1;
             }
             /* !Other subcommand options go here. */
@@ -187,13 +250,26 @@ usage:
     exit(1);
 }
 
-static void count_usage(const char *command)
+static void count_usage(
+    const char *command)
 {
-    fprintf(stderr, "Usage: %s [options] count [options] <args>\n", command);
+    fprintf(stderr,
+        "Usage: %s [options] count [count options]\n"
+        "\n"
+        "Count path elements within PATH environment variable.\n"
+        "\n"
+        "Options:\n"
+        "\n"
+        "  --help - Show this usage help.\n"
+        "\n", command);
 }
 
 static void process_count_argv(
-    const char *command, char *path, size_t path_len, int argc, char **argv)
+    const char *command,
+    char *path,
+    size_t path_len,
+    int argc,
+    char **argv)
 {
     int i;
     for (i = 0; i < argc; ++i) {
@@ -223,9 +299,18 @@ usage:
     exit(1);
 }
 
-static void bytes_usage(const char *command)
+static void bytes_usage(
+    const char *command)
 {
-    fprintf(stderr, "Usage: %s [options] bytes [options] <args>\n", command);
+    fprintf(stderr,
+        "Usage: %s [options] bytes [bytes options]\n"
+        "\n"
+        "Prints number of bytes in PATH environment variable.\n"
+        "\n"
+        "Options:\n"
+        "\n"
+        "  --help - Show this usage help.\n"
+        "\n", command);
 }
 
 static void process_bytes_argv(
@@ -263,9 +348,18 @@ usage:
     exit(1);
 }
 
-static void chars_usage(const char *command)
+static void chars_usage(
+    const char *command)
 {
-    fprintf(stderr, "Usage: %s [options] chars [options] <args>\n", command);
+    fprintf(stderr,
+        "Usage: %s [options] chars [chars options]\n"
+        "\n"
+        "Prints number of UTF-8 characters in PATH environment variable.\n"
+        "\n"
+        "Options:\n"
+        "\n"
+        "  --help - Show this usage help.\n"
+        "\n", command);
 }
 
 static void process_chars_argv(
@@ -303,20 +397,35 @@ usage:
     exit(1);
 }
 
-static void get_usage(char *command)
+static void get_usage(
+    char *command)
 {
-    fprintf(stderr, "Usage: %s [options] get [options] <args>\n", command);
+    fprintf(stderr,
+        "Usage: %s [options] get [get options]\n"
+        "\n"
+        "Print path element at index for PATH environment variable.\n"
+        "\n"
+        "Options:\n"
+        "\n"
+        "  --help - Show this usage help.\n"
+        "  --index <value>, -i <value> - Specify selection index. (default: 0)\n"
+        "  --tail, -t - Select the path element at end of PATH.\n"
+        "\n", command);
 }
 
-static void process_get_argv(char *command, char *path, size_t path_len, int argc, char **argv)
+static void process_get_argv(
+    char *command,
+    char *path,
+    size_t path_len,
+    int argc,
+    char **argv)
 {
     int idx = 0;
     char *sub;
     size_t sub_len;
     char *res;
     int i;
-    int tail_used = 0;
-    int index_used = 0;
+    int index_given = 0;
 
     if (path == NULL || path_len == 0) {
         exit(0);
@@ -332,11 +441,11 @@ static void process_get_argv(char *command, char *path, size_t path_len, int arg
             if (strcmp(argv[i],"--help") == 0) {
                 goto usage;
             }
-            else if (STR_EQ(argv[i], "--index") || STR_EQ(argv[i], "-i") && !tail_used) {  
-                index_used = 1;
+            else if (IS_INDEX_ARG(argv, i) && !index_given) {  
+                index_given = 1;
                 if (i + 1 < argc) {
                     ++i;
-                    if (is_decimal(argv[i]) || is_hex(argv[i]) || is_octal(argv[i])) {
+                    if (IS_VALID_INDEX(argv, i)) {
                         idx = strtol(argv[i], NULL, 0);
                         if (idx == LONG_MIN || idx == LONG_MAX || errno == ERANGE) {
                             goto usage;
@@ -346,8 +455,8 @@ static void process_get_argv(char *command, char *path, size_t path_len, int arg
                     }
                 }
             }
-            else if (STR_EQ(argv[i], "--tail") || STR_EQ(argv[i], "-t") && !index_used) { 
-                tail_used = 1; 
+            else if (IS_TAIL_ARG(argv, i) && !index_given) { 
+                index_given = 1; 
                 idx = way_count_elems(path, path_len) - 1;
             }
             /* !Other subcommand options go here. */
@@ -372,15 +481,17 @@ usage:
     exit(1);
 }
 
-int main(int argc, char **argv)
+int main(
+    int argc,
+    char **argv)
 {
     int i;
     
     int have_subcommand = 0;
     char *subcommand = NULL;
 
-    char *envpath = getenv("PATH");
-    size_t envpath_len = strlen(envpath);
+    char *path = getenv("PATH");
+    size_t path_len = strlen(path);
 
     /*
       Usage: <command> [options] <sub command> [options] <args>
@@ -400,7 +511,7 @@ int main(int argc, char **argv)
     /* 2. Process options until sub_command */
     if (argc == 1)
     {
-        printf("%s", envpath);
+        printf("%s", path);
         exit(0);
     }
 
@@ -425,29 +536,29 @@ int main(int argc, char **argv)
 
     if (subcommand != NULL) {
         if (STR_EQ(subcommand, "insert")) {
-            process_insert_argv(command, envpath, envpath_len, argc - i, argv + i);
+            process_insert_argv(command, path, path_len, argc - i, argv + i);
         }
-        if (STR_EQ(subcommand, "delete")) {
-            process_delete_argv(command, envpath, envpath_len, argc - i, argv + i);
+        else if (STR_EQ(subcommand, "delete")) {
+            process_delete_argv(command, path, path_len, argc - i, argv + i);
         }
-        if (STR_EQ(subcommand, "count")) {
-            process_count_argv(command, envpath, envpath_len, argc - i, argv + i);
+        else if (STR_EQ(subcommand, "count")) {
+            process_count_argv(command, path, path_len, argc - i, argv + i);
         }
-        if (STR_EQ(subcommand, "bytes")) {
-            process_bytes_argv(command, envpath, envpath_len, argc - i, argv + i);
+        else if (STR_EQ(subcommand, "bytes")) {
+            process_bytes_argv(command, path, path_len, argc - i, argv + i);
         }
-        if (STR_EQ(subcommand, "chars")) {
-            process_chars_argv(command, envpath, envpath_len, argc - i, argv + i);
+        else if (STR_EQ(subcommand, "chars")) {
+            process_chars_argv(command, path, path_len, argc - i, argv + i);
         }
-        if (STR_EQ(subcommand, "get")) {
-            process_get_argv(command, envpath, envpath_len, argc - i, argv + i);
+        else if (STR_EQ(subcommand, "get")) {
+            process_get_argv(command, path, path_len, argc - i, argv + i);
         }
     }
 
     /* TODO: Consider path output options? */
 
 usage:
-    print_path(envpath, envpath_len);
+    print_path(path, path_len);
     print_usage(command);
     return 1;
 }
