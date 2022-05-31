@@ -79,7 +79,7 @@ func _insert_elem(mode int, dst *string, path string, idx uint64, npath string) 
 		if (mode == 2) {
 			fmt.Printf("%s", npath)
 			if (len(path) > 0) {
-				fmt.Print(':')
+				fmt.Printf("%c", ':')
 			}
 		}
 	}
@@ -100,7 +100,7 @@ func _insert_elem(mode int, dst *string, path string, idx uint64, npath string) 
 				if (mode == 2) {
 					fmt.Printf("%s", npath)
 					if (len(path) - i > 0) {
-						fmt.Print(':')
+						fmt.Printf("%c", ':')
 					}
 				}
 			}
@@ -111,7 +111,7 @@ func _insert_elem(mode int, dst *string, path string, idx uint64, npath string) 
 		// TODO: Implement mode 1
 		if (mode == 2) {
 			if (len(path) > 0) {
-				fmt.Print(':')
+				fmt.Printf("%c", ':')
 			}
 			fmt.Printf("%s", npath)
 		}
@@ -121,6 +121,43 @@ func _insert_elem(mode int, dst *string, path string, idx uint64, npath string) 
 func way_insert_print(path string, idx uint64, npath string) {
 	_insert_elem(2, nil, path, idx, npath)
 }
+
+func _delete_elem(mode int, dst *string, path string, idx uint64) {
+
+    var count uint64 = 0
+    
+    //dst_idx := 0
+
+	for i, w := 0, 0; i < len(path); i += w {
+		/* Extract multibyte UTF-8 code points. */
+		c, width := utf8.DecodeRuneInString(path[i:])
+		w = width
+    //for i := 0; i < len(path); i++ {
+        if (path[i] == ':') {
+            count++
+            if (idx == 0 && count == 1) {
+				continue
+			}
+            if (idx == count) {
+				continue
+			}
+        }
+        if (idx != count) {
+            // if (mode == 1) {
+            //     if (dst) dst[dst_idx++] = path[i];
+            //     if (dst_len) *dst_len++;
+            // }
+            if (mode == 2) {
+				fmt.Printf("%c", c)
+			}
+        }
+    }
+}
+
+func way_delete_print(path string, idx uint64) {
+	_delete_elem(2, nil, path, idx)
+}
+
 
 func process_insert(command string, path string, args []string) {
 
@@ -173,6 +210,61 @@ usage:
 	os.Exit(1)
 }
 
+func process_delete(command string, path string, args []string) {
+	var idx uint64 = 0
+
+	index_given := 0
+
+	i := 0
+	for ; i < len(args); i++ {
+		if args[i] == "--" {
+			i++
+			break
+		} else if args[i][0] == '-' {
+			if args[i] == "--help" {
+				goto usage
+			} else if (args[i] == "-i" || args[i] == "--index") && index_given == 0 {
+				index_given = 1
+				if i+1 < len(args) {
+					i++
+					if is_valid_index(args[i]) {
+						var errno error
+						idx, errno = strconv.ParseUint(args[i], 0, 64)
+						// TODO: Check for overflow and underflow. (How to use limits.h in Go?)
+						if /*idx == limits.LONG_MIN || idx == limits.LONG_MAX ||*/ errno != nil {
+							goto usage
+						}
+					} else {
+						goto usage
+					}
+				}
+			} else if (args[i] == "-t" || args[i] == "--tail") && index_given == 0 {
+				index_given = 1
+				idx = way_count_elems(path);
+				if idx > 0 {
+					idx--
+				}
+			} else {
+				goto usage
+			}
+			continue
+		}
+		break
+	}
+
+    if (len(args) - i == 0) {
+		way_delete_print(path, idx)
+		os.Exit(0)
+	}
+
+usage:
+    /* Dump path even during errors to prevent an error from busting PATH */
+	fmt.Printf("%s", path)
+	fmt.Printf("Usage: ...")
+    //delete_usage(command);
+    os.Exit(1);
+}
+
 func main() {
 	var subcommand string
 
@@ -220,7 +312,7 @@ func main() {
 		if subcommand == "insert" {
 			process_insert(os.Args[0], path, os.Args[i:]);
 		} else if subcommand == "delete" {
-			fmt.Printf("delete")
+			process_delete(os.Args[0], path, os.Args[i:]);
 		} else if subcommand == "count" {
 			fmt.Printf("count")
 		} else if subcommand == "bytes" {
