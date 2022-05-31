@@ -31,7 +31,7 @@ static void print_usage(
         "Sub Commands:\n"
         "\n"
         "  bytes - Output number of bytes in PATH.\n"
-        "  chars - Output number of characters in PATH (using UTF8).\n"
+        "  chars - Output number of UTF-8 characters in PATH.\n"
         "  get - Get the PATH element at index. (default: 0)\n"
         "  insert - Insert the PATH element before index. (default: 0)\n"
         "  delete - Delete the PATH element at index. (default: 0)\n"
