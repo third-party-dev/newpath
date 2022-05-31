@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-	"unicode/utf8"
-	"way"
+	"github.com/third-party-dev/way/pkg/way"
 )
 
 func is_decimal(arg string) bool {
