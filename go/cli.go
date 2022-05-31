@@ -158,6 +158,38 @@ func way_delete_print(path string, idx uint64) {
 	_delete_elem(2, nil, path, idx)
 }
 
+func _get_elem(mode int, dst *string, path string, idx uint64) {
+    var count uint64 = 0
+    
+    //size_t dst_idx = 0;
+
+	for i, w := 0, 0; i < len(path); i += w {
+		/* Extract multibyte UTF-8 code points. */
+		c, width := utf8.DecodeRuneInString(path[i:])
+		w = width
+    
+        if (path[i] == ':') {
+			count++
+		}
+        if (path[i] == ':' && idx == count) {
+			continue
+		}
+        if (idx == count) {
+            // if (mode == 1) {
+            //     if (dst) dst[dst_idx++] = path[i];
+            //     if (dst_len) *dst_len++;
+            // }
+            if (mode == 2) {
+                fmt.Printf("%c", c);
+            }
+        }
+    }
+}
+
+func way_get_print(path string, idx uint64) {
+	_get_elem(2, nil, path, idx)
+}
+
 
 func process_insert(command string, path string, args []string) {
 
@@ -265,6 +297,149 @@ usage:
     os.Exit(1);
 }
 
+func process_get(command string, path string, args []string) {
+	var idx uint64 = 0
+
+	index_given := 0
+
+	i := 0
+	for ; i < len(args); i++ {
+		if args[i] == "--" {
+			i++
+			break
+		} else if args[i][0] == '-' {
+			if args[i] == "--help" {
+				goto usage
+			} else if (args[i] == "-i" || args[i] == "--index") && index_given == 0 {
+				index_given = 1
+				if i+1 < len(args) {
+					i++
+					if is_valid_index(args[i]) {
+						var errno error
+						idx, errno = strconv.ParseUint(args[i], 0, 64)
+						// TODO: Check for overflow and underflow. (How to use limits.h in Go?)
+						if /*idx == limits.LONG_MIN || idx == limits.LONG_MAX ||*/ errno != nil {
+							goto usage
+						}
+					} else {
+						goto usage
+					}
+				}
+			} else if (args[i] == "-t" || args[i] == "--tail") && index_given == 0 {
+				index_given = 1
+				idx = way_count_elems(path);
+				if idx > 0 {
+					idx--
+				}
+			} else {
+				goto usage
+			}
+			continue
+		}
+		break
+	}
+
+    if (len(args) - i == 0) {
+		way_get_print(path, idx)
+		os.Exit(0)
+	}
+
+usage:
+	fmt.Printf("Usage: ...")
+    //get_usage(command);
+    os.Exit(1);
+}
+
+func process_count(command string, path string, args []string) {
+
+    i := 0;
+    for ; i < len(args); i++ {
+        if args[i][0] == '-' {
+            if args[i] == "--help" {
+                goto usage;
+            } else {
+                goto usage;
+            }
+            continue;
+        }
+        break;
+    }
+
+    if (len(args) != i) {
+        goto usage;
+    }
+
+    fmt.Printf("%d", way_count_elems(path))
+    os.Exit(0)
+
+usage:
+    //count_usage(command);
+	fmt.Printf("Usage: ...")
+    os.Exit(1);
+}
+
+func process_bytes(command string, path string, args []string) {
+
+    i := 0;
+    for ; i < len(args); i++ {
+        if args[i][0] == '-' {
+            if args[i] == "--help" {
+                goto usage;
+            } else {
+                goto usage;
+            }
+            continue;
+        }
+        break;
+    }
+
+    if (len(args) != i) {
+        goto usage;
+    }
+
+    fmt.Printf("%d", len(path))
+    os.Exit(0)
+
+usage:
+    //count_usage(command);
+	fmt.Printf("Usage: ...")
+    os.Exit(1);
+}
+
+func process_chars(command string, path string, args []string) {
+
+    count, i := 0, 0
+
+    for ; i < len(args); i++ {
+        if args[i][0] == '-' {
+            if args[i] == "--help" {
+                goto usage;
+            } else {
+                goto usage;
+            }
+            continue;
+        }
+        break;
+    }
+
+    if (len(args) != i) {
+        goto usage;
+    }
+
+	// Note: range implicitly decodes runes
+	for i = range path {
+		count++
+	}
+
+    fmt.Printf("%d", count)
+    os.Exit(0)
+
+usage:
+    //count_usage(command);
+	fmt.Printf("Usage: ...")
+    os.Exit(1);
+}
+
 func main() {
 	var subcommand string
 
@@ -310,17 +485,17 @@ func main() {
 
 	if subcommand != "" {
 		if subcommand == "insert" {
-			process_insert(os.Args[0], path, os.Args[i:]);
+			process_insert(os.Args[0], path, os.Args[i:])
 		} else if subcommand == "delete" {
-			process_delete(os.Args[0], path, os.Args[i:]);
+			process_delete(os.Args[0], path, os.Args[i:])
 		} else if subcommand == "count" {
-			fmt.Printf("count")
+			process_count(os.Args[0], path, os.Args[i:])
 		} else if subcommand == "bytes" {
-			fmt.Printf("bytes")
+			process_bytes(os.Args[0], path, os.Args[i:])
 		} else if subcommand == "chars" {
-			fmt.Printf("chars")
+			process_chars(os.Args[0], path, os.Args[i:])
 		} else if subcommand == "get" {
-			fmt.Printf("get")
+			process_get(os.Args[0], path, os.Args[i:])
 		}
 	}
 
