@@ -4,16 +4,17 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-	"github.com/third-party-dev/way/pkg/way"
+
+	way "third-party.dev/git/projects/way/api"
 )
 
 func is_decimal(arg string) bool {
-	for _, c := range(arg) {
-		if (c < '0' || c > '9') {
+	for _, c := range arg {
+		if c < '0' || c > '9' {
 			return false
 		}
 	}
-	return true;
+	return true
 }
 
 func is_hex(arg string) bool {
@@ -28,7 +29,7 @@ func is_hex(arg string) bool {
 			return false
 		}
 	}
-	return true;
+	return true
 }
 
 func is_octal(arg string) bool {
@@ -39,24 +40,23 @@ func is_octal(arg string) bool {
 
 	i := 1
 	for ; i < len(arg); i++ {
-		if (arg[i] < '0' || arg[i] > '7') {
+		if arg[i] < '0' || arg[i] > '7' {
 			return false
 		}
 	}
-	return true;
+	return true
 }
 
 func is_valid_index(arg string) bool {
 	return (is_decimal(arg) || is_hex(arg) || is_octal(arg))
 }
 
-
 func process_insert(command string, path string, args []string) {
 
 	var idx uint64 = 0
 
 	index_given := 0
-	
+
 	i := 0
 	for ; i < len(args); i++ {
 		if args[i] == "--" {
@@ -82,7 +82,7 @@ func process_insert(command string, path string, args []string) {
 				}
 			} else if (args[i] == "-t" || args[i] == "--tail") && index_given == 0 {
 				index_given = 1
-				idx = way.Count(path);
+				idx = way.Count(path)
 			} else {
 				goto usage
 			}
@@ -91,8 +91,8 @@ func process_insert(command string, path string, args []string) {
 		break
 	}
 
-	if (len(args) - i == 1) {
-		npath := args[i];
+	if len(args)-i == 1 {
+		npath := args[i]
 		way.InsertPrint(path, idx, npath)
 		os.Exit(0)
 	}
@@ -132,7 +132,7 @@ func process_delete(command string, path string, args []string) {
 				}
 			} else if (args[i] == "-t" || args[i] == "--tail") && index_given == 0 {
 				index_given = 1
-				idx = way.Count(path);
+				idx = way.Count(path)
 				if idx > 0 {
 					idx--
 				}
@@ -144,17 +144,17 @@ func process_delete(command string, path string, args []string) {
 		break
 	}
 
-    if (len(args) - i == 0) {
+	if len(args)-i == 0 {
 		way.DeletePrint(path, idx)
 		os.Exit(0)
 	}
 
 usage:
-    /* Dump path even during errors to prevent an error from busting PATH */
+	/* Dump path even during errors to prevent an error from busting PATH */
 	fmt.Printf("%s", path)
 	fmt.Printf("Usage: ...")
-    //delete_usage(command);
-    os.Exit(1);
+	//delete_usage(command);
+	os.Exit(1)
 }
 
 func process_get(command string, path string, args []string) {
@@ -187,7 +187,7 @@ func process_get(command string, path string, args []string) {
 				}
 			} else if (args[i] == "-t" || args[i] == "--tail") && index_given == 0 {
 				index_given = 1
-				idx = way.Count(path);
+				idx = way.Count(path)
 				if idx > 0 {
 					idx--
 				}
@@ -199,105 +199,114 @@ func process_get(command string, path string, args []string) {
 		break
 	}
 
-    if (len(args) - i == 0) {
+	if len(args)-i == 0 {
 		way.GetPrint(path, idx)
 		os.Exit(0)
 	}
 
 usage:
 	fmt.Printf("Usage: ...")
-    //get_usage(command);
-    os.Exit(1);
+	//get_usage(command);
+	os.Exit(1)
 }
 
 func process_count(command string, path string, args []string) {
 
-    i := 0;
-    for ; i < len(args); i++ {
-        if args[i][0] == '-' {
-            if args[i] == "--help" {
-                goto usage;
-            } else {
-                goto usage;
-            }
-            continue;
-        }
-        break;
-    }
+	i := 0
+	for ; i < len(args); i++ {
+		if args[i][0] == '-' {
+			if args[i] == "--help" {
+				goto usage
+			} else {
+				goto usage
+			}
+			continue
+		}
+		break
+	}
 
-    if (len(args) != i) {
-        goto usage;
-    }
+	if len(args) != i {
+		goto usage
+	}
 
-    fmt.Printf("%d", way.Count(path))
-    os.Exit(0)
+	fmt.Printf("%d", way.Count(path))
+	os.Exit(0)
 
 usage:
-    //count_usage(command);
+	//count_usage(command);
 	fmt.Printf("Usage: ...")
-    os.Exit(1);
+	os.Exit(1)
 }
 
 func process_bytes(command string, path string, args []string) {
 
-    i := 0;
-    for ; i < len(args); i++ {
-        if args[i][0] == '-' {
-            if args[i] == "--help" {
-                goto usage;
-            } else {
-                goto usage;
-            }
-            continue;
-        }
-        break;
-    }
+	i := 0
+	for ; i < len(args); i++ {
+		if args[i][0] == '-' {
+			if args[i] == "--help" {
+				goto usage
+			} else {
+				goto usage
+			}
+			continue
+		}
+		break
+	}
 
-    if (len(args) != i) {
-        goto usage;
-    }
+	if len(args) != i {
+		goto usage
+	}
 
-    fmt.Printf("%d", len(path))
-    os.Exit(0)
+	fmt.Printf("%d", len(path))
+	os.Exit(0)
 
 usage:
-    //count_usage(command);
+	//count_usage(command);
 	fmt.Printf("Usage: ...")
-    os.Exit(1);
+	os.Exit(1)
 }
 
 func process_chars(command string, path string, args []string) {
 
-    count, i := 0, 0
+	count, i := 0, 0
 
-    for ; i < len(args); i++ {
-        if args[i][0] == '-' {
-            if args[i] == "--help" {
-                goto usage;
-            } else {
-                goto usage;
-            }
-            continue;
-        }
-        break;
-    }
+	for ; i < len(args); i++ {
+		if args[i][0] == '-' {
+			if args[i] == "--help" {
+				goto usage
+			} else {
+				goto usage
+			}
+			continue
+		}
+		break
+	}
 
-    if (len(args) != i) {
-        goto usage;
-    }
+	if len(args) != i {
+		goto usage
+	}
 
 	// Note: range implicitly decodes runes
 	for i = range path {
 		count++
 	}
 
-    fmt.Printf("%d", count)
-    os.Exit(0)
+	fmt.Printf("%d", count)
+	os.Exit(0)
 
 usage:
-    //count_usage(command);
+	//count_usage(command);
 	fmt.Printf("Usage: ...")
-    os.Exit(1);
+	os.Exit(1)
+}
+
+func process_meta() {
+	version := `"version":"0.0.0"`
+	syntax := `"syntax":"go"`
+	options := `"options:":{"--help":"flag"}`
+	commands := `"commands":{"insert":{},"delete":{},"get":{},"count":{},"bytes":{},"chars":{}}`
+	fmt.Printf("{%s,%s,%s,%s}", version, syntax, options, commands)
+	os.Exit(0)
 }
 
 func main() {
@@ -329,7 +338,7 @@ func main() {
 	//offset := 0
 	i := 1
 	for ; i < len(os.Args); i++ {
-	//for i, v := range os.Args[1:] {
+		//for i, v := range os.Args[1:] {
 		if os.Args[i][0] == '-' {
 			if os.Args[i] == "--help" {
 				goto usage
@@ -356,6 +365,8 @@ func main() {
 			process_chars(os.Args[0], path, os.Args[i:])
 		} else if subcommand == "get" {
 			process_get(os.Args[0], path, os.Args[i:])
+		} else if subcommand == "meta" {
+			process_meta()
 		}
 	}
 
@@ -363,9 +374,8 @@ func main() {
 
 usage:
 	fmt.Printf("%s", path)
-	fmt.Printf("Usage: ...");
+	fmt.Printf("Usage: ...")
 	//print_usage(command);
 	os.Exit(1)
 
 }
-

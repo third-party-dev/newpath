@@ -1,3 +1,3 @@
 #!/bin/sh
 
-go build -o way cli.go
+go build -o way main.go
