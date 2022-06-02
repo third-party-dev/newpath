@@ -2,6 +2,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "way.h"
+
+/* --- Start of unistd.h definitions --- */
+
+typedef long int ssize_t;
+
+/* --- End of unistd.h definitions --- */
+
 /* Note: This includes non-visible variation selectors. */
 static size_t strlen_mb(
     const char* path,
@@ -29,6 +37,64 @@ size_t way_count_chars(
     return strlen_mb(path, path_len);
 }
 
+
+int _way_putchar(int c, int eof, void * _) {
+    (void)_;
+    putchar(c);
+}
+
+
+int _way_count_iter(int c, int eof, void *count) {
+    if ((char)c == ':') (*(size_t *)count)++;
+}
+
+int _way_set_iter(int c, int eof, void *dst) {
+    (*(char *)dst) = (char)c;
+}
+
+
+void _way_iterate_fd(int fd, void *data, int(*f)(int,int,void*)) {
+
+    char buffer[sizeof(size_t)];
+    ssize_t bytes;
+    int i;
+    while ((bytes = read(fd, buffer, sizeof(size_t)))) {
+        if (bytes == 0) { f(buffer[i], 1, data); exit(0); }
+        if (bytes < 0) exit(1);
+        if (f) for (i = 0; i < bytes; ++i) f(buffer[i], 0, data);
+    }
+
+}
+
+
+void _way_iterate_cstr(char *s, size_t s_len, void *data, int(*f)(int,int,void*)) {
+    int i;
+    for (i = 0; i < s_len; ++i) {
+        f(s[i], 0, data);
+    }
+    f(s[i], 1, data);
+}
+
+
+size_t way_count_fd(int fd) {
+
+  size_t count = 0;
+  
+  _way_iterate_fd(fd, (void *)&count, _way_count_iter);
+
+  return count > 0 ? count + 1 : 1;
+}
+
+
+size_t way_count_cstr(char *s, size_t s_len) {
+
+  size_t count = 0;
+  
+  _way_iterate_cstr(s, s_len, (void *)&count, _way_count_iter);
+
+  return count > 0 ? count + 1 : 1;
+}
+
 size_t way_count_elems(
     const char *path,
     const size_t path_len) {
@@ -46,6 +112,106 @@ size_t way_count_elems(
   return count > 0 ? count + 1 : 1;
 }
 
+
+struct _insert_ctx {
+    int idx;
+    char *npath;
+    size_t npath_len;
+    struct way_mode mode;
+    int out_fd;
+
+    int i;
+    size_t count;
+    int inserted; /* 1 - inserted, 2 - added ':' */
+};
+
+
+int _way_insert_iter(int cparam, int eof, void *data)
+{
+    struct _insert_ctx *ctx = (struct _insert_ctx *)data;
+    char c = (char)cparam;
+
+    if (!eof && ctx->inserted == 1) {
+        if (ctx->mode.output == WAY_STREAM)
+            (void)write(ctx->out_fd, ":", 1);
+        ctx->inserted = 2;
+    }
+
+    if (ctx->mode.output == WAY_STREAM)
+        (void)write(ctx->out_fd, &c, 1);
+
+    if (c == ':') {
+        ctx->count++;
+        if (ctx->count == ctx->idx && ctx->inserted == 0) {
+            if (ctx->mode.output == WAY_STREAM) {
+                write(ctx->out_fd, ctx->npath, ctx->npath_len);
+            }
+            ctx->inserted = 1;
+        }
+    }
+
+    if (eof && ctx->count + 1 == ctx->idx) {
+        if (ctx->mode.output == WAY_STREAM) {
+            if (ctx->i > 0) write(ctx->out_fd, ":", 1);
+            write(ctx->out_fd, ctx->npath, ctx->npath_len);
+        }
+        ctx->inserted = 1;
+    }
+
+    ctx->i++;
+}
+
+
+static void _insert(
+    struct way_mode mode,
+    int out_fd,
+    int in_fd,
+    char *dst,
+    size_t *dst_len,
+    char *path, 
+    size_t path_len, 
+    int idx, 
+    char *npath, 
+    size_t npath_len) {
+
+    /*size_t count = 0;*/
+    /*size_t dst_idx = 0;*/
+    /*int i;*/
+    
+    struct _insert_ctx ctx = { 0 };
+    ctx.idx = idx;
+    ctx.npath = npath;
+    ctx.mode = mode;
+    ctx.out_fd = out_fd;
+    ctx.npath_len = npath_len;
+
+    if (ctx.idx == 0) {
+        if (mode.output == WAY_STREAM) {
+            /* //! Make sure this is complete. */
+            write(out_fd, npath, npath_len);
+        }
+        ctx.inserted = 1;
+        /*if (path_len > 0) putchar(':');*/
+    }
+
+    if (mode.input == WAY_STREAM)
+        _way_iterate_fd(in_fd, (void *)&ctx, _way_insert_iter);
+    if (mode.input == WAY_MEMORY)
+        _way_iterate_cstr(path, path_len, (void *)&ctx, _way_insert_iter);
+
+    if (ctx.idx < 0) { /* tail */
+        if (mode.output == WAY_STREAM) {
+            /* //! Make sure these writes complete. */
+            if (ctx.i > 0) write(out_fd, ":", 1);
+            /* Handle this: if (path_len > 0) putchar(':'); */
+            write(out_fd, npath, npath_len);
+            /*printf("%s", npath);*/
+        }
+    }
+}
+
+
+#ifndef USE_INSERT_ELEM
 static void _insert_elem(
     int mode,
     char *dst,
@@ -87,7 +253,6 @@ static void _insert_elem(
         }
     }
 
-    /* Get the count. */
     for (i = 0; i < path_len; ++i) {
         if (mode == 1) {
             if (dst) dst[dst_idx++] = path[i];
@@ -130,7 +295,52 @@ static void _insert_elem(
         }
     }
 }
+#endif
 
+
+void way_insert_fd2mem(
+    int in_fd,
+    char *dst,
+    size_t *dst_len,
+    int idx,
+    char *npath,
+    size_t npath_len) {
+    struct way_mode mode;
+    mode.input = WAY_STREAM;
+    mode.output = WAY_MEMORY;
+    /* //TODO: Implement this. */
+    _insert(mode, -1, in_fd, dst, dst_len, NULL, 0, idx, npath, strlen(npath));
+}
+
+
+void way_insert_mem2fd(
+    int out_fd,
+    char *path,
+    size_t path_len,
+    int idx,
+    char *npath,
+    size_t npath_len) {
+    struct way_mode mode = { 0 };
+    mode.input = WAY_MEMORY;
+    mode.output = WAY_STREAM;
+    _insert(mode, out_fd, -1, NULL, NULL, path, path_len, idx, npath, strlen(npath));
+}
+
+
+void way_insert_fd2fd(
+    int out_fd,
+    int in_fd,
+    int idx,
+    char *npath,
+    size_t npath_len) {
+    struct way_mode mode = { 0 };
+    mode.input = WAY_STREAM;
+    mode.output = WAY_STREAM;
+    _insert(mode, out_fd, in_fd, NULL, NULL, NULL, 0, idx, npath, strlen(npath));
+}
+
+
+/* LEGACY */
 void way_insert_set(
     char *dst,
     size_t *dst_len,
@@ -142,14 +352,18 @@ void way_insert_set(
     _insert_elem(1, dst, dst_len, path, path_len, idx, npath, npath_len);
 }
 
+
+/* LEGACY */
 void way_insert_print(
     char *path,
     size_t path_len,
     int idx,
     char *npath) {
-    _insert_elem(2, NULL, NULL, path, path_len, idx, npath, strlen(npath));
+    
 }
 
+#ifndef USE_DELETE_ELEM
+/* LEGACY */
 static void _delete_elem(
     int mode, 
     char *dst, 
@@ -177,7 +391,62 @@ static void _delete_elem(
         }
     }
 }
+#endif
 
+
+int _way_delete_iter(int cparam, int eof, void *data)
+{
+    struct _insert_ctx *ctx = (struct _insert_ctx *)data;
+    char c = (char)cparam;
+
+    if (c == ':') {
+        ctx->count++;
+        if (ctx->idx == 0 && ctx->count == 1) goto next;
+        if (ctx->idx == ctx->count) goto next;
+    }
+    if (ctx->idx != ctx->count) {
+        _way_putchar(cparam, 0, NULL);
+    }
+
+next:
+    ctx->i++;
+}
+
+
+static void _delete_stream(
+    int mode, 
+    char *dst, 
+    size_t *dst_len, 
+    char *path, 
+    size_t path_len, 
+    int idx) {
+
+    size_t count = 0;
+    int i;
+    size_t dst_idx = 0;
+
+    struct _insert_ctx ctx = { 0 };
+
+
+    /*for (i = 0; i < path_len; ++i) {
+        if (path[i] == ':') {
+            ++count;
+            if (idx == 0 && count == 1) continue;
+            if (idx == count) continue;
+        }
+        if (idx != count) {
+            if (mode == 1) {
+                if (dst) dst[dst_idx++] = path[i];
+                if (dst_len) *dst_len++;
+            }
+            if (mode == 2) putchar(path[i]);
+        }
+    }*/
+    _way_iterate_fd(fileno(stdin), (void *)&ctx, _way_delete_iter);
+}
+
+
+/* LEGACY */
 void way_delete_set(
     char *dst,
     size_t *dst_len,
@@ -187,13 +456,18 @@ void way_delete_set(
     _delete_elem(1, dst, dst_len, path, path_len, idx);
 }
 
+
+/* LEGACY */
 void way_delete_print(
     char *path,
     size_t path_len,
     int idx) {
-    _delete_elem(2, NULL, NULL, path, path_len, idx);
+    _delete_stream(2, NULL, NULL, path, path_len, idx);
 }
 
+
+#ifndef USE_GET_ELEM
+/* LEGACY */
 static void _get_elem(
     int mode, 
     char *dst, 
@@ -220,7 +494,46 @@ static void _get_elem(
         }
     }
 }
+#endif
 
+
+int _way_get_iter(int cparam, int eof, void *data)
+{
+    struct _insert_ctx *ctx = (struct _insert_ctx *)data;
+    char c = (char)cparam;
+
+    if (c == ':') ctx->count++;
+    if (c == ':' && ctx->idx == ctx->count) goto next;
+    if (ctx->idx == ctx->count) {
+        _way_putchar(cparam, 0, NULL);
+    }
+
+next:
+    ctx->i++;
+}
+
+
+static void _get_stream(
+    int mode, 
+    char *dst, 
+    size_t *dst_len, 
+    char *path, 
+    size_t path_len, 
+    int idx) {
+
+    size_t count = 0;
+    int i;
+    size_t dst_idx = 0;
+
+    struct _insert_ctx ctx = { 0 };
+    ctx.idx = idx;
+
+    _way_iterate_fd(fileno(stdin), (void *)&ctx, _way_get_iter);
+
+}
+
+
+/* LEGACY */
 void way_get_set(
     char *dst,
     size_t *dst_len,
@@ -230,10 +543,12 @@ void way_get_set(
     _get_elem(1, dst, dst_len, path, path_len, idx);
 }
 
+
+/* LEGACY */
 void way_get_print(
     char *path,
     size_t path_len,
     int idx) {
-    _get_elem(2, NULL, NULL, path, path_len, idx);
+    _get_stream(2, NULL, NULL, path, path_len, idx);
 }
 

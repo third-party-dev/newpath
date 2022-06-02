@@ -5,7 +5,23 @@
 #include <limits.h>
 #include <locale.h>
 
+/* --- Start of unistd.h definitions --- */
+
+typedef long int ssize_t;
+
+#ifdef _WIN32
+#define isatty _isatty
+#endif
+/* Note: Avoiding inclusion of unistd.h for portability. */
+extern int isatty (int fd);
+
+/* --- End of unistd.h definitions --- */
+
 #include "way.h"
+
+#define FLAG_API_MODE  (0x1)
+#define FLAG_CLI_MODE  (0x2)
+#define FLAG_PIPE_MODE (0x4)
 
 #define STR_EQ(s1, s2) (strcmp(s1, s2) == 0)
 
@@ -111,10 +127,11 @@ static void process_insert_argv(
     char *path,
     size_t path_len,
     int argc,
-    char **argv)
+    char **argv,
+    struct way_mode mode)
 {
     int idx = 0;
-    char *tgtpath = NULL;
+    char *npath = NULL;
 
     int index_given = 0;
 
@@ -145,7 +162,12 @@ static void process_insert_argv(
             }
             else if (IS_TAIL_ARG(argv, i) && !index_given) {
                 index_given = 1;
-                idx = way_count_elems(path, path_len);
+                if (mode.input == WAY_MEMORY) {
+                    /* //TODO: Test this. */
+                    idx = way_count_elems(path, path_len);
+                } else {
+                    idx = -1;
+                }
             }
             /* !Other subcommand options go here. */
             else {
@@ -158,8 +180,14 @@ static void process_insert_argv(
 
     /* Process subcommand arguments */
     if (argc - i == 1) {
-        tgtpath = argv[i];
-        way_insert_print(path, path_len, idx, tgtpath);
+        npath = argv[i];
+        if (mode.input == WAY_MEMORY) {
+            way_insert_mem2fd(fileno(stdout), path, path_len, idx, npath, strlen(npath));
+        }
+        if (mode.input == WAY_STREAM) {
+            way_insert_fd2fd(fileno(stdout), fileno(stdin), idx, npath, strlen(npath));
+        }
+        /*way_insert_print(path, path_len, idx, tgtpath);*/
         exit(0);
     }
 
@@ -191,7 +219,8 @@ static void process_delete_argv(
     char *path,
     size_t path_len,
     int argc,
-    char **argv)
+    char **argv,
+    struct way_mode mode)
 {
     int idx = 0;
 
@@ -224,7 +253,12 @@ static void process_delete_argv(
                 }
             }
             else if (IS_TAIL_ARG(argv, i) && !index_given) {
+                /* //! Can't use --tail with a stream. */
                 index_given = 1;
+                if (mode.input == WAY_STREAM) {
+                    fprintf(stderr, "Error: Can not use tail in stream mode.\n");
+                    goto usage;
+                }
                 idx = way_count_elems(path, path_len) - 1;
             }
             /* !Other subcommand options go here. */
@@ -269,7 +303,8 @@ static void process_count_argv(
     char *path,
     size_t path_len,
     int argc,
-    char **argv)
+    char **argv,
+    struct way_mode mode)
 {
     int i;
     for (i = 0; i < argc; ++i) {
@@ -291,7 +326,11 @@ static void process_count_argv(
         goto usage;
     }
 
-    printf("%u\n", (unsigned int)way_count_elems(path, path_len));
+    if (mode.input == WAY_STREAM) {
+        printf("%u\n", (unsigned int)way_count_fd(fileno(stdin)));
+    } else {
+        printf("%u\n", (unsigned int)way_count_cstr(path, path_len));
+    }
     exit(0);
 
 usage:
@@ -318,7 +357,8 @@ static void process_bytes_argv(
     const char *path, 
     const size_t path_len, 
     int argc, 
-    char **argv)
+    char **argv,
+    struct way_mode mode)
 {
     int i;
     for (i = 0; i < argc; ++i) {
@@ -367,7 +407,8 @@ static void process_chars_argv(
     const char *path, 
     const size_t path_len, 
     int argc, 
-    char **argv)
+    char **argv,
+    struct way_mode mode)
 {
     int i;
     for (i = 0; i < argc; ++i) {
@@ -418,7 +459,8 @@ static void process_get_argv(
     char *path,
     size_t path_len,
     int argc,
-    char **argv)
+    char **argv,
+    struct way_mode mode)
 {
     int idx = 0;
     char *sub;
@@ -427,7 +469,7 @@ static void process_get_argv(
     int i;
     int index_given = 0;
 
-    if (path == NULL || path_len == 0) {
+    if ((path == NULL || path_len == 0) && mode.input == WAY_MEMORY) {
         exit(0);
     }
 
@@ -457,6 +499,10 @@ static void process_get_argv(
             }
             else if (IS_TAIL_ARG(argv, i) && !index_given) { 
                 index_given = 1; 
+                if (mode.input == WAY_STREAM) {
+                    fprintf(stderr, "Error: Can not use tail in stream mode.\n");
+                    goto usage;
+                }
                 idx = way_count_elems(path, path_len) - 1;
             }
             /* !Other subcommand options go here. */
@@ -481,18 +527,24 @@ usage:
     exit(1);
 }
 
+
 int main(
     int argc,
     char **argv)
 {
     int i;
-    
-    int have_subcommand = 0;
+
+    struct way_mode mode;
+    mode.input = WAY_MEMORY;
+    mode.output = WAY_STREAM;
+
+    /* int output_mode = IO_STREAM; CLI only supports IO_STREAM */
+
     char *subcommand = NULL;
 
-    char *path = getenv("PATH");
-    size_t path_len = strlen(path);
-
+    char *path = NULL;
+    size_t path_len = 0;
+    
     /*
       Usage: <command> [options] <sub command> [options] <args>
       States:
@@ -508,12 +560,7 @@ int main(
 
     setlocale(LC_ALL, "");
 
-    /* 2. Process options until sub_command */
-    if (argc == 1)
-    {
-        printf("%s", path);
-        exit(0);
-    }
+    /* ==== Process the top level arguments. ==== */
 
     for (i = 1; i < argc; ++i) {
         if (*argv[i] == '-')
@@ -534,24 +581,52 @@ int main(
         }
     }
 
+    /* ==== Done Processing Args, Now Check Environment ==== */
+
+    if (!isatty(fileno(stdin))) mode.input = WAY_STREAM;
+
+    if (mode.input == WAY_MEMORY) {
+        path = getenv("PATH");
+        path_len = strlen(path);
+    }
+
+    /* ==== When no arguments are given, we dump the input. ==== */
+
+    if (argc == 1)
+    {
+        if (mode.input == WAY_MEMORY) {
+            printf("%s", path);
+        } else {
+            char buffer[sizeof(size_t)];
+            ssize_t bytes;
+            /* //TODO: Consider select()/poll()? */
+            while ((bytes = read(fileno(stdin), buffer, sizeof(size_t)))) {
+                if (bytes == 0) exit(0);
+                if (bytes < 0) exit(1);
+                for (i = 0; i < bytes; ++i) putchar(buffer[i]);
+            }
+        }
+        exit(0);
+    }
+
     if (subcommand != NULL) {
         if (STR_EQ(subcommand, "insert")) {
-            process_insert_argv(command, path, path_len, argc - i, argv + i);
+            process_insert_argv(command, path, path_len, argc - i, argv + i, mode);
         }
         else if (STR_EQ(subcommand, "delete")) {
-            process_delete_argv(command, path, path_len, argc - i, argv + i);
+            process_delete_argv(command, path, path_len, argc - i, argv + i, mode);
         }
         else if (STR_EQ(subcommand, "count")) {
-            process_count_argv(command, path, path_len, argc - i, argv + i);
+            process_count_argv(command, path, path_len, argc - i, argv + i, mode);
         }
         else if (STR_EQ(subcommand, "bytes")) {
-            process_bytes_argv(command, path, path_len, argc - i, argv + i);
+            process_bytes_argv(command, path, path_len, argc - i, argv + i, mode);
         }
         else if (STR_EQ(subcommand, "chars")) {
-            process_chars_argv(command, path, path_len, argc - i, argv + i);
+            process_chars_argv(command, path, path_len, argc - i, argv + i, mode);
         }
         else if (STR_EQ(subcommand, "get")) {
-            process_get_argv(command, path, path_len, argc - i, argv + i);
+            process_get_argv(command, path, path_len, argc - i, argv + i, mode);
         }
     }
 
