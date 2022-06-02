@@ -10,6 +10,18 @@ typedef long int ssize_t;
 
 /* --- End of unistd.h definitions --- */
 
+ssize_t _writeall(int fd, const void *buf, size_t count)
+{
+    unsigned char *ptr = (unsigned char *)buf;
+    size_t offset = 0;
+    ssize_t bytes = 0;
+    while ((bytes = write(fd, ptr+offset, count-offset))) {
+        if (bytes <= 0) return bytes;
+        offset += bytes;
+    }
+    return count;
+}
+
 /* Note: This includes non-visible variation selectors. */
 static size_t strlen_mb(
     const char* path,
@@ -133,18 +145,18 @@ int _way_insert_iter(int cparam, int eof, void *data)
 
     if (!eof && ctx->inserted == 1) {
         if (ctx->mode.output == WAY_STREAM)
-            (void)write(ctx->out_fd, ":", 1);
+            (void)_writeall(ctx->out_fd, ":", 1);
         ctx->inserted = 2;
     }
 
     if (ctx->mode.output == WAY_STREAM)
-        (void)write(ctx->out_fd, &c, 1);
+        (void)_writeall(ctx->out_fd, &c, 1);
 
     if (c == ':') {
         ctx->count++;
         if (ctx->count == ctx->idx && ctx->inserted == 0) {
             if (ctx->mode.output == WAY_STREAM) {
-                write(ctx->out_fd, ctx->npath, ctx->npath_len);
+                _writeall(ctx->out_fd, ctx->npath, ctx->npath_len);
             }
             ctx->inserted = 1;
         }
@@ -152,8 +164,8 @@ int _way_insert_iter(int cparam, int eof, void *data)
 
     if (eof && ctx->count + 1 == ctx->idx) {
         if (ctx->mode.output == WAY_STREAM) {
-            if (ctx->i > 0) write(ctx->out_fd, ":", 1);
-            write(ctx->out_fd, ctx->npath, ctx->npath_len);
+            if (ctx->i > 0) _writeall(ctx->out_fd, ":", 1);
+            _writeall(ctx->out_fd, ctx->npath, ctx->npath_len);
         }
         ctx->inserted = 1;
     }
@@ -173,25 +185,19 @@ static void _insert(
     int idx, 
     char *npath, 
     size_t npath_len) {
-
-    /*size_t count = 0;*/
-    /*size_t dst_idx = 0;*/
-    /*int i;*/
     
     struct _insert_ctx ctx = { 0 };
     ctx.idx = idx;
     ctx.npath = npath;
+    ctx.npath_len = npath_len;
     ctx.mode = mode;
     ctx.out_fd = out_fd;
-    ctx.npath_len = npath_len;
 
     if (ctx.idx == 0) {
         if (mode.output == WAY_STREAM) {
-            /* //! Make sure this is complete. */
-            write(out_fd, npath, npath_len);
+            _writeall(out_fd, npath, npath_len);
         }
         ctx.inserted = 1;
-        /*if (path_len > 0) putchar(':');*/
     }
 
     if (mode.input == WAY_STREAM)
@@ -201,11 +207,8 @@ static void _insert(
 
     if (ctx.idx < 0) { /* tail */
         if (mode.output == WAY_STREAM) {
-            /* //! Make sure these writes complete. */
-            if (ctx.i > 0) write(out_fd, ":", 1);
-            /* Handle this: if (path_len > 0) putchar(':'); */
-            write(out_fd, npath, npath_len);
-            /*printf("%s", npath);*/
+            if (ctx.i > 0) _writeall(out_fd, ":", 1);
+            _writeall(out_fd, npath, npath_len);
         }
     }
 }
