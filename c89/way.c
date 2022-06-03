@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "cppref.h"
 #include "way.h"
 
 /* Note: Avoiding inclusion of unistd.h for portability. */
@@ -110,29 +111,6 @@ static void way_iterate_mem(char *s, size_t s_len, void *data, int(*f)(int,int,v
         f(s[i], 0, data);
     }
     f(s[i], 1, data);
-}
-
-
-/* (Private) Counts the total multi-byte characters in memory. */
-/* Note: This includes non-visible variation selectors. */
-static size_t strlen_mb(
-    const char* path,
-    const size_t path_len)
-{
-    size_t result = 0;
-    char *ptr = (char *)path;
-    const char* end = ptr + path_len;
-    mblen(NULL, 0); /* reset the conversion state */
-    while(ptr < end) {
-        int next = mblen(ptr, end - ptr);
-        if(next == -1) {
-           return (size_t)-1;
-           break;
-        }
-        ptr += next;
-        ++result;
-    }
-    return result;
 }
 
 
