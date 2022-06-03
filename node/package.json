@@ -1,0 +1,15 @@
+{
+  "name": "way",
+  "version": "1.0.0",
+  "description": "Pathway (aka \"Way\") is a utility to assist with changing the PATH environment variable, or any `:` separated search path.",
+  "main": "bin/cli.js",
+  "scripts": {
+    "way": "bin/cli.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "bin": {
+    "way": "./bin/cli.js"
+  },
+  "author": "Vincent Agriesti (https://www.vinnie.work)",
+  "license": "MIT"
+}
