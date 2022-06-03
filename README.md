@@ -330,6 +330,14 @@ Articles are from ~2000:
 
 # Development Road Map Thoughts
 
+## Feature Wishlist
+
+- Regular Expressions
+- Encoding Specifications
+- Single Command, Multiple Actions
+- User Configuration Overrides (~/.wayrc)
+- More exhaustive unit tests
+
 ## Language Ports
 
 - C
