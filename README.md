@@ -68,7 +68,7 @@ Use Case: Remove A Path from PATH
 # Without way:
 export PATH=`echo $PATH | tr ":" "\n" | grep -v "/three" | tr "\n" ":"`
 # With way:
-export PATH=`way delete /three`
+export PATH=`way list | grep -v /three | way join`
 ```
 
 Use Case: Replace A Path
@@ -441,3 +441,79 @@ Articles are from ~2000:
 - JFrog Conan Binary Packages
 - Maven?
 - Docker (because I think its funny)
+
+# Edge Cases
+
+## Weird Paths
+
+`/bin:` / `:/bin` - A _naked_ separator in the PATH typically includes the _current_ path (i.e. \`pwd\`).
+
+"" - `way` views an empty PATH as valid and an undefined element as an empty PATH. (`count == 0`, `bytes == 0`)
+
+`:` - `way` views a single separator as 2 empty elements. (`count == 2`, `bytes == 1`)
+
+`::` - `way` views two sole separators as 3 empty elements. (`count == 3`, `bytes == 2`)
+
+## Compute Limits
+
+See limits: `true | xargs --show-limits`
+
+```text
+Your environment variables take up 3232 bytes
+POSIX upper limit on argument length (this system): 2091872
+POSIX smallest allowable upper limit on argument length (all systems): 4096
+Maximum length of command we could actually use: 2088640
+Size of command buffer we are actually using: 131072
+Maximum parallelism (--max-procs must be no greater): 2147483647
+```
+
+See ARG_MAX: `getconf -a | grep ARG_MAX`
+
+```text
+ARG_MAX                            2097152
+_POSIX_ARG_MAX                     2097152
+```
+
+From execve man page:
+
+```text
+Limits on size of arguments and environment
+
+    Most UNIX implementations impose some limit on the total size of
+    the command-line argument (argv) and environment (envp) strings
+    that may be passed to a new program.  POSIX.1 allows an
+    implementation to advertise this limit using the ARG_MAX constant
+    (either defined in <limits.h> or available at run time using the
+    call sysconf(_SC_ARG_MAX)).
+
+    On Linux prior to kernel 2.6.23, the memory used to store the
+    environment and argument strings was limited to 32 pages (defined
+    by the kernel constant MAX_ARG_PAGES).  On architectures with a
+    4-kB page size, this yields a maximum size of 128 kB.
+
+    On kernel 2.6.23 and later, most architectures support a size
+    limit derived from the soft RLIMIT_STACK resource limit (see
+    getrlimit(2)) that is in force at the time of the execve() call.
+    (Architectures with no memory management unit are excepted: they
+    maintain the limit that was in effect before kernel 2.6.23.)
+    This change allows programs to have a much larger argument and/or
+    environment list.  For these architectures, the total size is
+    limited to 1/4 of the allowed stack size.  (Imposing the
+    1/4-limit ensures that the new program always has some stack
+    space.)  Additionally, the total size is limited to 3/4 of the
+    value of the kernel constant _STK_LIM (8 MiB).  Since Linux
+    2.6.25, the kernel also places a floor of 32 pages on this size
+    limit, so that, even when RLIMIT_STACK is set very low,
+    applications are guaranteed to have at least as much argument and
+    environment space as was provided by Linux 2.6.22 and earlier.
+    (This guarantee was not provided in Linux 2.6.23 and 2.6.24.)
+    Additionally, the limit per string is 32 pages (the kernel
+    constant MAX_ARG_STRLEN), and the maximum number of strings is
+    0x7FFFFFFF.
+```
+
+### Relevance
+
+`way` stream support currently limits a set of operations to memory only operations because it doesn't attempt to record or rewind any of the stream its processing. This keeps memory usage low. 
+
+If `way` attempted to capture a stream into memory to re-enable this functionality, it could make the expected results non-deterministic for extreme environments and it would make the implementation more complex. If this is attempted in the future, it'd likely be opt-in only (i.e. another required flag or user config setting).
