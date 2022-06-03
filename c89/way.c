@@ -127,7 +127,7 @@ size_t way_chars_mem(
 
 /* (Private) Iteration handler used to count elements in PATH. */
 static int way_count_iter(int c, int eof, void *count) {
-    if ((char)c == ':') (*(size_t *)count)++;
+    if ((char)c == WAY_SEPARATOR) (*(size_t *)count)++;
 }
 
 
@@ -156,13 +156,13 @@ static int way_replace_iter(int cparam, int eof, void *data)
     /* Write all the stuff we aren't replacing. */
     if (ctx->idx != ctx->count) {
         if (!eof && ctx->inserted == 1) {
-            write_char(ctx, ':');
+            write_char(ctx, WAY_SEPARATOR);
             ctx->inserted = 2;
         }
         write_char(ctx, c);
     }
 
-    if (c == ':') {
+    if (c == WAY_SEPARATOR) {
         ctx->count++;
         if (ctx->idx == ctx->count && ctx->inserted == 0) {
             write_cstr(ctx, ctx->npath, ctx->npath_len);
@@ -255,13 +255,13 @@ static int way_insert_iter(int cparam, int eof, void *data)
     char c = (char)cparam;
 
     if (!eof && ctx->inserted == 1) {
-        write_char(ctx, ':');
+        write_char(ctx, WAY_SEPARATOR);
         ctx->inserted = 2;
     }
 
     write_char(ctx, c);
 
-    if (c == ':') {
+    if (c == WAY_SEPARATOR) {
         ctx->count++;
         if (ctx->count == ctx->idx && ctx->inserted == 0) {
             write_cstr(ctx, ctx->npath, ctx->npath_len);
@@ -270,7 +270,7 @@ static int way_insert_iter(int cparam, int eof, void *data)
     }
 
     if (eof && ctx->count + 1 == ctx->idx) {
-        if (ctx->i > 0) write_char(ctx, ':');
+        if (ctx->i > 0) write_char(ctx, WAY_SEPARATOR);
         write_cstr(ctx, ctx->npath, ctx->npath_len);
         ctx->inserted = 1;
     }
@@ -324,7 +324,7 @@ static void _insert(
         way_iterate_mem(path, path_len, (void *)&ctx, way_insert_iter);
 
     if (ctx.idx < 0) { /* tail */
-        if (ctx.i > 0) write_char(&ctx, ':');
+        if (ctx.i > 0) write_char(&ctx, WAY_SEPARATOR);
         write_cstr(&ctx, npath, npath_len);
     }
 }
@@ -380,7 +380,7 @@ static int way_delete_iter(int cparam, int eof, void *data)
     struct way_iter_ctx *ctx = (struct way_iter_ctx *)data;
     char c = (char)cparam;
 
-    if (c == ':') {
+    if (c == WAY_SEPARATOR) {
         ctx->count++;
         if (ctx->idx == 0 && ctx->count == 1) return;
         if (ctx->idx == ctx->count) return;
@@ -448,8 +448,8 @@ static int way_get_iter(int cparam, int eof, void *data)
     struct way_iter_ctx *ctx = (struct way_iter_ctx *)data;
     char c = (char)cparam;
 
-    if (c == ':') ctx->count++;
-    if (c == ':' && ctx->idx == ctx->count) goto next;
+    if (c == WAY_SEPARATOR) ctx->count++;
+    if (c == WAY_SEPARATOR && ctx->idx == ctx->count) goto next;
     if (ctx->idx == ctx->count) {
         write_char(ctx, c);
     }
@@ -470,12 +470,9 @@ static void _get(
     size_t path_len, 
     int idx) {
 
-    /*size_t count = 0;
-    int i;
-    size_t dst_idx = 0;*/
-
     struct way_iter_ctx ctx = { 0 };
     ctx.mode = mode;
+    ctx.out_fd = out_fd;
     ctx.dst = dst;
     ctx.dst_len = dst_len;
     ctx.idx = idx;
@@ -513,3 +510,142 @@ void way_get_fd2fd(
 }
 
 
+/* (Private) Iteration handler used to list PATH elements. */
+static int way_list_iter(int cparam, int eof, void *data)
+{
+    struct way_iter_ctx *ctx = (struct way_iter_ctx *)data;
+    char c = (char)cparam;
+
+    if (c == WAY_SEPARATOR) {write_char(ctx, WAY_NEWLINE);}
+    else if (!eof) write_char(ctx, c);
+}
+
+
+/* List PATH elements. */
+static void _list(
+    struct way_mode mode, 
+    int out_fd,
+    int in_fd,
+    char *dst,
+    size_t *dst_len,
+    char *path, 
+    size_t path_len) {
+
+    struct way_iter_ctx ctx = { 0 };
+    ctx.mode = mode;
+    ctx.out_fd = out_fd;
+    ctx.dst = dst;
+    ctx.dst_len = dst_len;
+
+    if (mode.input == WAY_STREAM)
+        way_iterate_fd(in_fd, (void *)&ctx, way_list_iter);
+    if (mode.input == WAY_MEMORY)
+        way_iterate_mem(path, path_len, (void *)&ctx, way_list_iter);
+    
+    /* Add the extra newline to match "normal" behavior. */
+    write_char(&ctx, '\n');
+
+}
+
+
+/* List elements on lines from given memory range to stream. */
+void way_list_mem2fd(
+    int out_fd,
+    char *path,
+    size_t path_len) {
+    struct way_mode mode = { 0 };
+    mode.input = WAY_MEMORY;
+    mode.output = WAY_STREAM;
+    _list(mode, out_fd, -1, NULL, NULL, path, path_len);
+}
+
+
+/* List elements on lines from given stream to stream. */
+void way_list_fd2fd(
+    int out_fd,
+    int in_fd) {
+    struct way_mode mode = { 0 };
+    mode.input = WAY_STREAM;
+    mode.output = WAY_STREAM;
+    _list(mode, out_fd, in_fd, NULL, NULL, NULL, 0);
+}
+
+
+/* (Private) Iteration handler used to join PATH elements. */
+static int way_join_iter(int cparam, int eof, void *data)
+{
+    struct way_iter_ctx *ctx = (struct way_iter_ctx *)data;
+    char c = (char)cparam;
+
+    /* Consideration has been made to use isspace() here. I'm not
+       including it at this time because file names can technically
+       include any character except ':'. When we split a PATH in _list()
+       with a newline, we're _assuming_ that the user doesn't have any
+       newline bytes in their path elements. */
+
+    if (!eof) {
+        if (c == WAY_NEWLINE) {
+            if (ctx->inserted) {
+                write_char(ctx, WAY_SEPARATOR);
+                ctx->inserted = 0;
+            }
+            /* Indicate the deferred separator to acct for extra newline. */
+            ctx->inserted = 1;
+        }
+        else {
+            if (ctx->inserted) {
+                write_char(ctx, WAY_SEPARATOR);
+                ctx->inserted = 0;
+            }
+            write_char(ctx, c);
+        }
+    }
+
+}
+
+
+/* Join PATH elements. */
+static void _join(
+    struct way_mode mode, 
+    int out_fd,
+    int in_fd,
+    char *dst,
+    size_t *dst_len,
+    char *path, 
+    size_t path_len) {
+
+    struct way_iter_ctx ctx = { 0 };
+    ctx.mode = mode;
+    ctx.out_fd = out_fd;
+    ctx.dst = dst;
+    ctx.dst_len = dst_len;
+
+    if (mode.input == WAY_STREAM)
+        way_iterate_fd(in_fd, (void *)&ctx, way_join_iter);
+    if (mode.input == WAY_MEMORY)
+        way_iterate_mem(path, path_len, (void *)&ctx, way_join_iter);
+
+}
+
+
+/* Join whitespace delimited elements from given memory range to stream. */
+void way_join_mem2fd(
+    int out_fd,
+    char *path,
+    size_t path_len) {
+    struct way_mode mode = { 0 };
+    mode.input = WAY_MEMORY;
+    mode.output = WAY_STREAM;
+    _join(mode, out_fd, -1, NULL, NULL, path, path_len);
+}
+
+
+/* Join whitespace delimited elements from given stream to stream. */
+void way_join_fd2fd(
+    int out_fd,
+    int in_fd) {
+    struct way_mode mode = { 0 };
+    mode.input = WAY_STREAM;
+    mode.output = WAY_STREAM;
+    _join(mode, out_fd, in_fd, NULL, NULL, NULL, 0);
+}

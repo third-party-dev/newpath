@@ -221,7 +221,7 @@ static void replace_usage(
     char *command)
 {
     fprintf(stderr,
-        "Usage: %s [options] replace [insert options] <args>\n"
+        "Usage: %s [options] replace [replace options] <args>\n"
         "\n"
         "Replace a path at offset within PATH environment variable.\n"
         "\n"
@@ -449,6 +449,116 @@ static void process_count_argv(
 
 usage:
     count_usage(command);
+    exit(1);
+}
+
+static void list_usage(
+    const char *command)
+{
+    fprintf(stderr,
+        "Usage: %s [options] list [list options]\n"
+        "\n"
+        "List elements in individual lines.\n"
+        "\n"
+        "Options:\n"
+        "\n"
+        "  --help - Show this usage help.\n"
+        "\n", command);
+}
+
+static void process_list_argv(
+    const char *command,
+    char *path,
+    size_t path_len,
+    int argc,
+    char **argv,
+    struct way_mode mode)
+{
+    int i;
+    for (i = 0; i < argc; ++i) {
+        if (*argv[i] == '-')
+        {
+            if (strcmp(argv[i],"--help")) {
+                goto usage;
+            }
+            /* !Other subcommand options go here. */
+            else {
+                goto usage;
+            }
+            continue;
+        }
+        break;
+    }
+
+    if (argc - i > 0) {
+        goto usage;
+    }
+
+    if (mode.input == WAY_MEMORY) {
+        way_list_mem2fd(fileno(stdout), path, path_len);
+    }
+    if (mode.input == WAY_STREAM) {
+        way_list_fd2fd(fileno(stdout), fileno(stdin));
+    }
+    exit(0);
+
+usage:
+    list_usage(command);
+    exit(1);
+}
+
+static void join_usage(
+    const char *command)
+{
+    fprintf(stderr,
+        "Usage: %s [options] join [join options]\n"
+        "\n"
+        "List elements in individual lines.\n"
+        "\n"
+        "Options:\n"
+        "\n"
+        "  --help - Show this usage help.\n"
+        "\n", command);
+}
+
+static void process_join_argv(
+    const char *command,
+    char *path,
+    size_t path_len,
+    int argc,
+    char **argv,
+    struct way_mode mode)
+{
+    int i;
+    for (i = 0; i < argc; ++i) {
+        if (*argv[i] == '-')
+        {
+            if (strcmp(argv[i],"--help")) {
+                goto usage;
+            }
+            /* !Other subcommand options go here. */
+            else {
+                goto usage;
+            }
+            continue;
+        }
+        break;
+    }
+
+    if (argc - i > 0) {
+        goto usage;
+    }
+
+    if (mode.input == WAY_MEMORY) {
+        way_join_mem2fd(fileno(stdout), path, path_len);
+    }
+    if (mode.input == WAY_STREAM) {
+        way_join_fd2fd(fileno(stdout), fileno(stdin));
+    }
+    exit(0);
+
+usage:
+    join_usage(command);
     exit(1);
 }
 
@@ -750,6 +860,12 @@ int main(
         }
         else if (STR_EQ(subcommand, "count")) {
             process_count_argv(command, path, path_len, argc - i, argv + i, mode);
+        }
+        else if (STR_EQ(subcommand, "list")) {
+            process_list_argv(command, path, path_len, argc - i, argv + i, mode);
+        }
+        else if (STR_EQ(subcommand, "join")) {
+            process_join_argv(command, path, path_len, argc - i, argv + i, mode);
         }
         else if (STR_EQ(subcommand, "bytes")) {
             process_bytes_argv(command, path, path_len, argc - i, argv + i, mode);

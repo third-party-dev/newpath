@@ -10,6 +10,13 @@ struct way_mode {
     unsigned int output : 1;
 };
 
+#ifdef _WIN32
+#define WAY_SEPARATOR ';'
+#else
+#define WAY_SEPARATOR ':'
+#endif
+
+#define WAY_NEWLINE '\n'
 
 /* Counts the total multi-byte characters in memory range. */
 size_t way_chars_mem(
@@ -94,6 +101,32 @@ void way_get_fd2fd(
     int out_fd,
     int in_fd,
     int idx);
+
+
+/* List elements on lines from given memory range to stream. */
+void way_list_mem2fd(
+    int out_fd,
+    char *path,
+    size_t path_len);
+
+
+/* List elements on lines from given stream to stream. */
+void way_list_fd2fd(
+    int out_fd,
+    int in_fd);
+
+
+/* Join whitespace delimited elements from given memory range to stream. */
+void way_join_mem2fd(
+    int out_fd,
+    char *path,
+    size_t path_len);
+
+
+/* Join whitespace delimited elements from given stream to stream. */
+void way_join_fd2fd(
+    int out_fd,
+    int in_fd);
 
 
 #endif /* WAY_H */
