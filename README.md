@@ -175,6 +175,27 @@ Counts elements in the $PATH array.
 - Run: `way count`
 - Output: `3`
 
+### `way list`
+
+List elements line separated.
+
+- Given: `PATH=/one:/two:/three`
+- Run: `way list`
+- Output: 
+
+  ```text
+  /one
+  /two
+  /three
+  ```
+
+### `way join`
+
+Join line separated elements in a PATH value.
+
+- Run: `echo -en "/one\n/two\n/three" | way join`
+- Output: `/one:/two:/three`
+
 ### `way chars`
 
 Counts the multi-byte characters in $PATH (dependent on system's locale).
@@ -283,6 +304,32 @@ void way_get_fd2fd(
     int out_fd,
     int in_fd,
     int idx);
+
+
+/* List elements on lines from given memory range to stream. */
+void way_list_mem2fd(
+    int out_fd,
+    char *path,
+    size_t path_len);
+
+
+/* List elements on lines from given stream to stream. */
+void way_list_fd2fd(
+    int out_fd,
+    int in_fd);
+
+
+/* Join whitespace delimited elements from given memory range to stream. */
+void way_join_mem2fd(
+    int out_fd,
+    char *path,
+    size_t path_len);
+
+
+/* Join whitespace delimited elements from given stream to stream. */
+void way_join_fd2fd(
+    int out_fd,
+    int in_fd);
 ```
 
 </details>
@@ -337,6 +384,8 @@ Articles are from ~2000:
 - Single Command, Multiple Actions
 - User Configuration Overrides (~/.wayrc)
 - More exhaustive unit tests
+- Swap subcommand
+- De-duplication
 
 ## Language Ports
 
