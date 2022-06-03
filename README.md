@@ -512,6 +512,12 @@ Limits on size of arguments and environment
     0x7FFFFFFF.
 ```
 
+Microsoft Environment Limits:
+
+  - Environment limited to ~32KB
+  - Individual variables may be limited to ~2K.
+  - [What is the maximum length of an environment variable?](https://devblogs.microsoft.com/oldnewthing/20100203-00/?p=15083#:~:text=The%20theoretical%20maximum%20length%20of,a%20limit%20of%2032767%20characters.)
+
 ### Relevance
 
 `way` stream support currently limits a set of operations to memory only operations because it doesn't attempt to record or rewind any of the stream its processing. This keeps memory usage low. 
