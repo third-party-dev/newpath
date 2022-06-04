@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 # Python 3.10 - Latest
 #   UNTESTED
@@ -44,9 +44,6 @@
 # LANGUAGE=en_US.UTF-8
 # LC_ALL=en_US.UTF-8
 
-from encodings import utf_8
-
-
 # utf_8
 # utf-8
 # utf8
@@ -67,6 +64,36 @@ from encodings import utf_8
 
 import os
 import sys
+
+class WayMode(object):
+    MEMORY = 1
+    STREAM = 0
+
+    def __init__(self, input=MEMORY, output=STREAM):
+        self.input = input
+        self.output = output
+
+class WayCtx(object):
+    def __init__(self,
+            mode=WayMode(),
+            out_fd=sys.stdout.fileno(),
+            dst=None,
+            idx=0,
+            npath=None,
+            i=0,
+            count=0,
+            inserted=0,
+            dst_off=0):
+        self.mode = mode
+        self.out_fd = out_fd
+        self.dst = dst
+        self.idx = idx
+        self.npath = npath
+        
+        self.i = i
+        self.count = count
+        self.inserted = inserted
+        self.dst_off = dst_off
 
 
 def way_count(path):
@@ -172,7 +199,104 @@ def insert_usage():
     print("Insert Usage: ...")
 
 
-def process_insert(command, path, args):
+
+WAY_SEPARATOR = ':'
+WAY_NEWLINE = '\n'
+
+
+def write_char(ctx, c):
+    write_cstr(ctx, c)
+
+
+def write_cstr(ctx, s):
+    if s is None:
+        return
+    if ctx.mode.output == WayMode.STREAM:
+        # TODO: Is this the same as _writeall?
+        ctx.out_fd.write(s)
+    if ctx.mode.output == WayMode.MEMORY:
+        print("Memory writes not currently implemented")
+
+
+def way_iterate_fd(fd, ctx, f):
+    while True:
+        try:
+            s = fd.read(16)
+            if len(s) == 0:
+                f(None, True, ctx)
+                return
+            for c in s:
+               f(c, False, ctx)
+        except EOFError:
+            print("EOF\n")
+            f(None, True, ctx)
+            return
+        except Exception as e:
+            print("EOF: %s\n" % e)
+            sys.exit(1)
+        
+
+
+def way_iterate_mem(s, ctx, f):
+    for c in s:
+        f(c, False, ctx)
+    f(None, True, ctx)
+
+
+def way_insert_iter(c, eof, ctx):
+    if not eof and ctx.inserted == 1:
+        write_char(ctx, WAY_SEPARATOR)
+        ctx.inserted = 2
+    
+    write_char(ctx, c)
+
+    if c == WAY_SEPARATOR:
+        ctx.count += 1
+        if ctx.count == ctx.idx and ctx.inserted == 0:
+            write_cstr(ctx, ctx.npath)
+            ctx.inserted = 1
+    
+    #print("eof: %s count: %d idx %d" % (eof, ctx.count, ctx.idx))
+    if eof and ctx.count + 1 == ctx.idx:
+        if ctx.i > 0:
+            write_char(ctx, WAY_SEPARATOR)
+        write_cstr(ctx, ctx.npath)
+        ctx.inserted = 1
+    
+    ctx.i += 1
+
+
+def _insert(mode, out_fd, in_fd, dst, path, idx, npath):
+    ctx = WayCtx(mode=mode, out_fd=out_fd, dst=dst, idx=idx, npath=npath)
+
+    if ctx.idx == 0:
+        write_cstr(ctx, npath)
+        ctx.inserted = 1
+    
+    if mode.input == WayMode.STREAM:
+        way_iterate_fd(in_fd, ctx, way_insert_iter)
+    if mode.input == WayMode.MEMORY:
+        way_iterate_mem(path, ctx, way_insert_iter)
+    
+    if ctx.idx < 0:
+        if ctx.i > 0:
+            write_char(ctx, WAY_SEPARATOR)
+        write_cstr(ctx, npath)
+    
+    sys.exit(0)
+
+
+
+def way_insert_mem2fd(out_fd, path, idx, npath):
+    mode = WayMode(input=WayMode.MEMORY, output=WayMode.STREAM)
+    _insert(mode, out_fd, None, None, path, idx, npath)
+
+def way_insert_fd2fd(out_fd, in_fd, idx, npath):
+    mode = WayMode(input=WayMode.STREAM, output=WayMode.STREAM)
+    _insert(mode, out_fd, in_fd, None, None, idx, npath)
+
+
+def process_insert(command, path, args, mode):
     idx = 0
     index_given = False
 
@@ -195,7 +319,10 @@ def process_insert(command, path, args):
                         sys.exit(1)
             elif (args[i] == "-t" or args[i] == "--tail") and not index_given:
                 index_given = True
-                idx = way_count(path)
+                if mode.input == WayMode.MEMORY:
+                    idx = way_count(path)
+                elif mode.input == WayMode.STREAM:
+                    idx = -1
             else:
                 insert_usage()
                 sys.exit(1)
@@ -204,32 +331,38 @@ def process_insert(command, path, args):
         break
     
     if len(args) - i == 1:
-        way_insert_print(path, idx, args[i])
+        npath = args[i]
+        if mode.input == WayMode.MEMORY:
+            way_insert_mem2fd(sys.stdout, path, idx, npath)
+        if mode.input == WayMode.STREAM:
+            way_insert_fd2fd(sys.stdout, sys.stdin, idx, npath)
         sys.exit(0)
     
-    print("woomp")
     insert_usage()
     sys.exit(1)
 
 
 def main_usage():
-    print("Usage: %s ...", sys.argv[0])
+    print("Usage: %s ..." % sys.argv[0])
+
+
 
 import locale
 def main():
-    print("sys.getdefaultencoding: %s" % sys.getdefaultencoding())
-    print("locale.getpreferredencoding: %s" % locale.getpreferredencoding())
-    print("sys.stdin.encoding: %s" % sys.stdin.encoding)
-    print("sys.stdout.encoding: %s" % sys.stdout.encoding)
-    print("sys.getfilesystemencoding: %s" % sys.getfilesystemencoding())
-    # PY3 Only: print("sys.flags.utf8_mode: %s" % sys.flags.utf8_mode)
-    # PY3 Only: print("os.device_encoding: %s" % os.device_encoding(0))
-    path = os.getenv("PATH")
-    subcommand = None
 
-    if len(sys.argv) <= 1:
-        print(path)
-        sys.exit(0)
+    # print("sys.getdefaultencoding: %s" % sys.getdefaultencoding())
+    # print("locale.getpreferredencoding: %s" % locale.getpreferredencoding())
+    # print("sys.stdin.encoding: %s" % sys.stdin.encoding)
+    # print("sys.stdout.encoding: %s" % sys.stdout.encoding)
+    # print("sys.getfilesystemencoding: %s" % sys.getfilesystemencoding())
+    # # PY3 Only: print("sys.flags.utf8_mode: %s" % sys.flags.utf8_mode)
+    # # PY3 Only: print("os.device_encoding: %s" % os.device_encoding(0))
+    
+    mode = WayMode(input=WayMode.MEMORY, output=WayMode.STREAM)
+    subcommand = None
+    path = None
+
+    command = sys.argv[0]
 
     i = 1
     for p in sys.argv[1:]:
@@ -245,11 +378,28 @@ def main():
             i += 1
             break
         i += 1
+
+    if not os.isatty(sys.stdin.fileno()):
+        mode.input = WayMode.STREAM
+
+    if (mode.input == WayMode.MEMORY):
+        path = os.getenv("PATH")
+
+    if len(sys.argv) <= 1:
+        if mode.input == WayMode.MEMORY:
+            print(path)
+            sys.exit(0)
+        else:
+            while True:
+                try:
+                    print(sys.stdin.read())
+                except EOFError:
+                    sys.exit(0)
+                except:
+                    sys.exit(1)
     
-    print(sys.argv[i:])
-    if subcommand != None:
-        if subcommand == "insert":
-            process_insert(sys.argv[0], path, sys.argv[i:])
+    if subcommand == "insert":
+        process_insert(sys.argv[0], path, sys.argv[i:], mode)
     
     print(path)
     main_usage()
