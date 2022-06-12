@@ -766,7 +766,7 @@ usage:
 
 int main(
     int argc,
-    char **argv)
+    char *argv[])
 {
     int i;
 
