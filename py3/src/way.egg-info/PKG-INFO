@@ -1,0 +1,16 @@
+Metadata-Version: 2.1
+Name: way
+Version: 0.0.1
+Summary: Path manipulation utility.
+Home-page: https://github.com/third-party-dev/pathway
+Author: Vincent Agriesti
+Author-email: vinnie@vinnie.work
+Project-URL: Bug Tracker, https://github.com/thirdy-party-dev/pathway/issues
+Classifier: License :: OSI Approvide :: MIT License
+Requires-Python: >=3.6
+License-File: LICENSE
+
+# Pathway
+
+This is the python implementation of pathway.
+
