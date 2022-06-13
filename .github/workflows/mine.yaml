@@ -33,7 +33,7 @@ jobs:
     - name: Download a single artifact
       uses: actions/download-artifact@v3
       with:
-        name: c89-binary
+        name: c89-outputs
     - name: Extract artifact
       run: tar -xf output.tar
     - name: Run it.
