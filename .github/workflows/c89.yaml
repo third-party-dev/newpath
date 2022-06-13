@@ -1,4 +1,4 @@
-name: way build and test
+name: c89
 
 on:
   push:
