@@ -26,7 +26,7 @@ jobs:
   way_c89_test:
     name: Test c89
     runs-on: ubuntu-latest
-	  needs: way_c89_build
+    needs: way_c89_build
     steps:
     - name: Download a single artifact
       uses: actions/download-artifact@v3
