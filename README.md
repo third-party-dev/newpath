@@ -1,6 +1,7 @@
 # PATH=\`way\`
 
-[![build](https://github.com/third-party-dev/pathway/actions/workflows/build.yaml/badge.svg)](https://github.com/third-party-dev/pathway/actions)
+[![build]
+(https://github.com/third-party-dev/pathway/actions/workflows/c89.yaml/badge.svg)](https://github.com/third-party-dev/pathway/actions)
 
 Pathway (aka "Way") is a utility to assist with changing the PATH environment variable, or any `:` separated search path.
 
