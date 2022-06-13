@@ -19,6 +19,4 @@ jobs:
       - name: Build c89
         run: cd c89 ; ./build.sh
 
-  way_c89_test:
-    name: Test c89
-    needs: way_c89_build
+
