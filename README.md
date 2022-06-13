@@ -1,5 +1,7 @@
 # PATH=\`way\`
 
+![example workflow](https://github.com/third-party-dev/pathway/actions/workflows/mine.yaml/badge.svg)
+
 Pathway (aka "Way") is a utility to assist with changing the PATH environment variable, or any `:` separated search path.
 
 ## Overview
