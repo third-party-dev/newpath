@@ -33,4 +33,4 @@ jobs:
       with:
         name: c89-binary
     - name: Run it.
-      run: ls -R
+      run: ./way
