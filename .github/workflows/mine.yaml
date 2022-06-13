@@ -21,4 +21,4 @@ jobs:
 
   way_c89_test:
     name: Test c89
-	  needs: way_c89_build
+    needs: way_c89_build
