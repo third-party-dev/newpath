@@ -1,0 +1,24 @@
+name: way build and test
+
+on:
+  push:
+    branches:
+      - 'main'
+
+jobs:
+  way_c89_build:
+    name: Build c89
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3
+      - name: Dump environment info.
+        run: pwd ; ls
+      - name: Install gcc.
+        run: sudo apt-get install -y gcc
+      - name: Build c89
+        run: cd c89 ; ./build.sh
+
+  way_c89_test:
+    name: Test c89
+	  needs: way_c89_build
